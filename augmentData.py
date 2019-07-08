@@ -57,10 +57,9 @@ def checkInputParameter(args) -> any:
 
     return args
 
-
-def main() -> None:
+def parseArgs() -> any:
     '''
-    Main function. Parse, check input parameter and process data augmentation.
+    Parse user arguments.
     '''
     parser = argparse.ArgumentParser(
         description='Data augmentation from an input image directory.')
@@ -83,8 +82,30 @@ def main() -> None:
     parser.add_argument('-t', '--threads', type=int, default=mp.cpu_count(),
                         help='Number of spawned threads to process data. Default is maximum number.')
 
+    return parser.parse_args()
+
+def printArgs(args) -> None:
+    '''
+    Print arguments to the console output.
+
+    args Arguments form input parser.
+    '''
+    param = ''
+    for x in args.__dict__:
+        param += ('%s\t %s\n' % (x, str(args.__dict__[x])))
+    
+    print(param)
+
+
+def main() -> None:
+    '''
+    Main function. Parse, check input parameter and process data augmentation.
+    '''
+
     try:
-        args = checkInputParameter(parser.parse_args())
+        args = parseArgs()
+        args = checkInputParameter(args)        
+        printArgs(args)
 
         aug = DataAugmentation(args.inputDir, args.outputDir)
         aug.setScales(args.scales)
