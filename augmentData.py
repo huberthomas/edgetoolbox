@@ -66,19 +66,19 @@ def main():
     parser.add_argument('-i', '--inputDir', type=str, default=None,
                         required=True, help='Input image directory.')
     parser.add_argument('-o', '--outputDir', type=str, default=None,
-                        required=True, help='Augmented image output directory.')
+                        required=True, help='Image output directory.')
     parser.add_argument('-s', '--scales', type=str, nargs='+', default='1',
-                        help='Set generated scales.')
+                        help='Set generated scales. Default [1].')
     parser.add_argument('-a', '--angles', type=str, nargs='+', default=None,
                         help='Data rotation angles in degrees.')
     parser.add_argument('-na', '--numberOfAngles', type=int, default=16,
-                        help='Number of auto generated angles for rotating data. 360° will be split up to this number of angles.')
+                        help='Number of auto generated angles for rotating data. 360° will be split up to this number of angles. Default 16.')
     parser.add_argument('-fh', '--flipHorizontal', default=False,
-                        action='store_true', help='Flip data horizontally.')
+                        action='store_true', help='Flip data horizontally. Default false.')
     parser.add_argument('-fv', '--flipVertical', default=False,
-                        action='store_true', help='Flip data vertically.')
+                        action='store_true', help='Flip data vertically. Default false.')
     parser.add_argument('-c', '--cropBlackRotationBorder', default=True,
-                        action='store_true', help='Crop out black rotation border.')
+                        action='store_true', help='Crop out black rotation border. Default true.')
     parser.add_argument('-t', '--threads', type=int, default=mp.cpu_count(),
                         help='Number of spawned threads to process data. Default is maximum number.')
 
