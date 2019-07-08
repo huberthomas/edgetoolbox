@@ -12,14 +12,17 @@ mp.set_start_method('spawn', True)
 
 class DataAugmentation:
     '''
-    Use this class to generate augmentation of an existing image folder.
-
-    inputDir 
-
-    outputDir
+    This class generates augmented data out of an existing image folder.
     '''
 
     def __init__(self, inputDir: str = None, outputDir: str = None) -> None:
+        '''
+        Constructor.
+
+        inputDir Input directory.
+
+        outputDir Output directory. Results will be stored here.
+        '''
         if inputDir is None or len(inputDir) == 0:
             raise ValueError('Input directory is empty.')
 
