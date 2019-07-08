@@ -57,6 +57,7 @@ def checkInputParameter(args) -> any:
 
     return args
 
+
 def parseArgs() -> any:
     '''
     Parse user arguments.
@@ -84,6 +85,7 @@ def parseArgs() -> any:
 
     return parser.parse_args()
 
+
 def printArgs(args) -> None:
     '''
     Print arguments to the console output.
@@ -93,7 +95,7 @@ def printArgs(args) -> None:
     param = ''
     for x in args.__dict__:
         param += ('%s\t %s\n' % (x, str(args.__dict__[x])))
-    
+
     print(param)
 
 
@@ -101,10 +103,9 @@ def main() -> None:
     '''
     Main function. Parse, check input parameter and process data augmentation.
     '''
-
     try:
         args = parseArgs()
-        args = checkInputParameter(args)        
+        args = checkInputParameter(args)
         printArgs(args)
 
         aug = DataAugmentation(args.inputDir, args.outputDir)
