@@ -9,6 +9,8 @@ from typing import List
 '''
 Utilities and helper functions.
 '''
+
+
 def getFileNames(inputDir: str = None, supportedExtensions: list = ['png', 'jpg', 'jpeg']) -> List[str]:
     '''
     Get files e.g. (png, jpg, jpeg) from an input directory. It is case insensitive to the extensions.
@@ -28,15 +30,16 @@ def getFileNames(inputDir: str = None, supportedExtensions: list = ['png', 'jpg'
     res = []
 
     dirList = os.listdir(inputDir)
-    
+
     for extension in supportedExtensions:
         pattern = ''
         for char in extension:
-            pattern += ('[%s%s]'%(char.lower(), char.upper()))
+            pattern += ('[%s%s]' % (char.lower(), char.upper()))
 
-        res.extend(fnmatch.filter(dirList, '*.%s'%(pattern)))
-        
+        res.extend(fnmatch.filter(dirList, '*.%s' % (pattern)))
+
     return res
+
 
 def rotateImage(img: any = None, angle: float = None, removeCropBorders: bool = True) -> any:
     """
@@ -49,14 +52,15 @@ def rotateImage(img: any = None, angle: float = None, removeCropBorders: bool = 
     if img is None:
         raise ValueError('Image must be set.')
 
-    height, width = img.shape[:2] # image shape has 3 dimensions
-    imageCenter = (width/2, height/2) # getRotationMatrix2D needs coordinates in reverse order (width, height) compared to shape
+    height, width = img.shape[:2]  # image shape has 3 dimensions
+    # getRotationMatrix2D needs coordinates in reverse order (width, height) compared to shape
+    imageCenter = (width/2, height/2)
 
     M = cv2.getRotationMatrix2D(imageCenter, angle, 1.0)
 
     # rotation calculates the cos and sin, taking absolutes of those.
-    absCos = abs(M[0,0]) 
-    absSin = abs(M[0,1])
+    absCos = abs(M[0, 0])
+    absSin = abs(M[0, 1])
 
     # find the new width and height bounds
     boundW = int(height * absSin + width * absCos)
@@ -68,7 +72,7 @@ def rotateImage(img: any = None, angle: float = None, removeCropBorders: bool = 
 
     # rotate image with the new bounds and translated rotation matrix
     rotatedImg = cv2.warpAffine(img, M, (boundW, boundH))
-    
+
     # remove black borders
     if removeCropBorders:
         x, y, bbW, bbH = getCropCoordinates(angle, width, height)
@@ -77,13 +81,14 @@ def rotateImage(img: any = None, angle: float = None, removeCropBorders: bool = 
 
     return rotatedImg
 
-def transformAndSaveImage(outputFilePath: str = None, 
-                            img: any = None, 
-                            angle: float = 0.0,
-                            scale: float = 1.0,
-                            flipHorizontal: bool = False, 
-                            flipVertical: bool = False,
-                            cropBlackBorder: bool = False) -> None:
+
+def transformAndSaveImage(outputFilePath: str = None,
+                          img: any = None,
+                          angle: float = 0.0,
+                          scale: float = 1.0,
+                          flipHorizontal: bool = False,
+                          flipVertical: bool = False,
+                          cropBlackBorder: bool = False) -> None:
     '''
     Rotates/flips an image by a defined angle and saves it to the output directory.
 
@@ -122,6 +127,7 @@ def transformAndSaveImage(outputFilePath: str = None,
 
     cv2.imwrite(outputFilePath, rotatedImg)
 
+
 def getCropCoordinates(angle: float = None, width: int = None, height: int = None) -> tuple:
     '''
     Rotation sometimes results in black borders around the image. This function calculates the
@@ -135,10 +141,10 @@ def getCropCoordinates(angle: float = None, width: int = None, height: int = Non
     height Height of the image.
 
     Returns the cropping tuple (x, y, width, height). 
-    '''    
+    '''
     if angle is None:
         raise ValueError('Angle is in degrees and must be set.')
-    
+
     if width is None:
         raise ValueError('Width must be set.')
 
@@ -155,7 +161,8 @@ def getCropCoordinates(angle: float = None, width: int = None, height: int = Non
         'h': width * math.sin(alpha) + height * math.cos(alpha)
     }
 
-    gamma = math.atan2(bb['w'], bb['h']) if width < height else math.atan2(bb['h'], bb['w'])
+    gamma = math.atan2(bb['w'], bb['h']) if width < height else math.atan2(
+        bb['h'], bb['w'])
     delta = math.pi - alpha - gamma
 
     length = height if width < height else width
@@ -166,3 +173,16 @@ def getCropCoordinates(angle: float = None, width: int = None, height: int = Non
     x = y * math.tan(gamma)
 
     return x, y, bb['w'] - 2 * x, bb['h'] - 2 * y
+
+
+def printArgs(args) -> None:
+    '''
+    Print arguments to the console output.
+
+    args Arguments form input parser.
+    '''
+    param = ''
+    for x in args.__dict__:
+        param += ('%s\t %s\n' % (x, str(args.__dict__[x])))
+
+    print(param)

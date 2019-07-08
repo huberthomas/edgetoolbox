@@ -5,6 +5,7 @@ import multiprocessing as mp
 import sys
 
 from edgelib.DataAugmentation import DataAugmentation
+from edgelib import Utilities
 
 
 def checkInputParameter(args) -> any:
@@ -86,19 +87,6 @@ def parseArgs() -> any:
     return parser.parse_args()
 
 
-def printArgs(args) -> None:
-    '''
-    Print arguments to the console output.
-
-    args Arguments form input parser.
-    '''
-    param = ''
-    for x in args.__dict__:
-        param += ('%s\t %s\n' % (x, str(args.__dict__[x])))
-
-    print(param)
-
-
 def main() -> None:
     '''
     Main function. Parse, check input parameter and process data augmentation.
@@ -106,7 +94,7 @@ def main() -> None:
     try:
         args = parseArgs()
         args = checkInputParameter(args)
-        printArgs(args)
+        Utilities.printArgs(args)
 
         aug = DataAugmentation(args.inputDir, args.outputDir)
         aug.setScales(args.scales)
