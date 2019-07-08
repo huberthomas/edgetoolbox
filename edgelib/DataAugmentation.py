@@ -37,14 +37,14 @@ class DataAugmentation:
 
         self.__inputDir = inputDir
         self.__outputDir = outputDir
-        self.__angles = self.__calculateAngles(16)
+        self.__angles = self.__calculateRotationAngles(16)
         self.__scales = [1.0]
         self.__flipHorizontal = False
         self.__flipVertical = False
         self.__numOfThreads = mp.cpu_count()
         self.__cropBlackRotationBorder = True
 
-    def setCropBlackRotationBorder(self, enable: bool = True):
+    def setCropBlackRotationBorder(self, enable: bool = True) -> None:
         '''
         If images are rotated black areas fills out empty data. Enabling crops image without black regions.
 
@@ -175,13 +175,13 @@ class DataAugmentation:
         numOfAngles Number angles, e.g. 4 will result in 4 angles: [0 90 180 270]
         '''
         try:
-            self.__angles = self.__calculateAngles(numOfAngles)
+            self.__angles = self.__calculateRotationAngles(numOfAngles)
         except Exception as e:
             raise e
 
-    def setAngles(self, angles: List[float] = None) -> None:
+    def setRotationAngles(self, angles: List[float] = None) -> None:
         '''
-        Set multiple angles for data augmentation.
+        Set multiple rotation angles for data augmentation.
 
         angles Angles that are used during the data augmentation process.
         '''
@@ -193,7 +193,7 @@ class DataAugmentation:
         for a in angles:
             self.__angles.append(abs(a))
 
-    def __calculateAngles(self, numOfAngles: int = None) -> List[float]:
+    def __calculateRotationAngles(self, numOfAngles: int = None) -> List[float]:
         '''
         Calculate angles given by a number of angles. 
         

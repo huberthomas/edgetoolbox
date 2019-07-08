@@ -2,17 +2,18 @@ import argparse
 import logging
 import os
 import multiprocessing as mp
+import sys
 
 from edgelib.DataAugmentation import DataAugmentation
 
 
-def checkInputParameter(args):
+def checkInputParameter(args) -> any:
     '''
     Check the input parameter from argparse.
 
     args Arguments.
 
-    Returns parsed arguments.
+    Returns parsed arguments. Throws exception if error occurs.
     '''
     if args.inputDir == None or not os.path.exists(args.inputDir):
         raise ValueError('Invalid input directory.')
@@ -57,7 +58,7 @@ def checkInputParameter(args):
     return args
 
 
-def main():
+def main() -> None:
     '''
     Main function. Parse, check input parameter and process data augmentation.
     '''
@@ -91,7 +92,7 @@ def main():
         if args.angles is None:
             aug.setNumberOfAngles(args.numberOfAngles)
         else:
-            aug.setAngles(args.angles)
+            aug.setRotationAngles(args.angles)
 
         if args.flipHorizontal:
             aug.enableFlipHorizontal()
@@ -102,8 +103,11 @@ def main():
         aug.setNumOfThreads(args.threads)
         aug.setCropBlackRotationBorder(args.cropBlackRotationBorder)
         aug.generateData()
+
+        sys.exit(0)
     except Exception as e:
         logging.error(e)
+        sys.exit(-1)
 
 
 if __name__ == '__main__':
