@@ -66,7 +66,7 @@ def main():
     parser.add_argument('-i', '--inputDir', type=str, default=None,
                         required=True, help='Input image directory.')
     parser.add_argument('-o', '--outputDir', type=str, default=None,
-                        required=True, help='Image output directory.')
+                        required=True, help='Image output directory. Subdirectory description: angle_flipH_flipV_scale.')
     parser.add_argument('-s', '--scales', type=str, nargs='+', default='1',
                         help='Set generated scales. Default [1].')
     parser.add_argument('-a', '--angles', type=str, nargs='+', default=None,
