@@ -5,9 +5,10 @@ import cv2
 from functools import partial
 from typing import List
 
-import Utilities
+from edgelib import Utilities
 
 mp.set_start_method('spawn', True)
+
 
 class DataAugmentation:
     '''
@@ -17,7 +18,8 @@ class DataAugmentation:
 
     outputDir
     '''
-    def __init__(self, inputDir : str = None, outputDir : str = None) -> None:
+
+    def __init__(self, inputDir: str = None, outputDir: str = None) -> None:
         if inputDir is None or len(inputDir) == 0:
             raise ValueError('Input directory is empty.')
 
@@ -40,6 +42,15 @@ class DataAugmentation:
         self.__flipHorizontal = False
         self.__flipVertical = False
         self.__numOfThreads = mp.cpu_count()
+        self.__cropBlackRotationBorder = True
+
+    def setCropBlackRotationBorder(self, enable: bool = True):
+        '''
+        If images are rotated black areas fills out empty data. Enabling crops image without black regions.
+
+        enable Enable black border cropping.
+        '''
+        self.__cropBlackRotationBorder = enable
 
     def setScales(self, scales: List[float] = None) -> None:
         '''
@@ -48,7 +59,8 @@ class DataAugmentation:
         scales Array that contains scale values.
         '''
         if scales is None or len(scales) == 0:
-            raise ValueError('Scales must be an array that contains scale values.')
+            raise ValueError(
+                'Scales must be an array that contains scale values.')
 
         self.__scales = scales
 
@@ -58,7 +70,8 @@ class DataAugmentation:
         augmented data.
         '''
         if numOfThreads is None or numOfThreads <= 0:
-            raise ValueError('Number of threads must be an interger value greater than 0.')
+            raise ValueError(
+                'Number of threads must be an interger value greater than 0.')
 
         self.__numOfThreads = numOfThreads
 
@@ -70,7 +83,7 @@ class DataAugmentation:
         imageFileNames = Utilities.getFileNames(self.__inputDir)
 
         f = open(os.path.join(self.__outputDir, "data.txt"), "w")
-        
+
         try:
             for imageFileName in imageFileNames:
                 imagePath = os.path.join(self.__inputDir, imageFileName)
@@ -78,36 +91,43 @@ class DataAugmentation:
                 img = cv2.imread(imagePath)
 
                 param = []
-                cropBlackBorder = True
-
+                cropBlackRotationBorder = self.__cropBlackRotationBorder
 
                 for scale in self.__scales:
                     for angle in self.__angles:
-                        subDir = '%.1f_%d_%d_%.1f'%(angle, False, False, scale)
+                        subDir = '%.1f_%d_%d_%.1f' % (
+                            angle, False, False, scale)
                         dirPath = os.path.join(self.__outputDir, subDir)
                         outFilePath = [dirPath]
-                        param.append((os.path.join(dirPath, imageFileName), img, angle, scale, False, False, cropBlackBorder))
+                        param.append((os.path.join(dirPath, imageFileName),
+                                      img, angle, scale, False, False, cropBlackRotationBorder))
                         f.write(os.path.join(subDir, imageFileName) + '\n')
 
                         if self.__flipHorizontal:
-                            subDir = '%.1f_%d_%d_%.1f'%(angle, True, False, scale)
+                            subDir = '%.1f_%d_%d_%.1f' % (
+                                angle, True, False, scale)
                             dirPath = os.path.join(self.__outputDir, subDir)
                             outFilePath.append(dirPath)
-                            param.append((os.path.join(dirPath, imageFileName), img, angle, scale, True, False, cropBlackBorder))
+                            param.append((os.path.join(
+                                dirPath, imageFileName), img, angle, scale, True, False, cropBlackRotationBorder))
                             f.write(os.path.join(subDir, imageFileName) + '\n')
 
                         if self.__flipVertical:
-                            subDir = '%.1f_%d_%d_%.1f'%(angle, False, True, scale)
+                            subDir = '%.1f_%d_%d_%.1f' % (
+                                angle, False, True, scale)
                             dirPath = os.path.join(self.__outputDir, subDir)
                             outFilePath.append(dirPath)
-                            param.append((os.path.join(dirPath, imageFileName), img, angle, scale, False, True, cropBlackBorder))
+                            param.append((os.path.join(
+                                dirPath, imageFileName), img, angle, scale, False, True, cropBlackRotationBorder))
                             f.write(os.path.join(subDir, imageFileName) + '\n')
-                        
+
                         if self.__flipHorizontal and self.__flipVertical:
-                            subDir = '%.1f_%d_%d_%.1f'%(angle, True, True, scale)
+                            subDir = '%.1f_%d_%d_%.1f' % (
+                                angle, True, True, scale)
                             dirPath = os.path.join(self.__outputDir, subDir)
                             outFilePath.append(dirPath)
-                            param.append((os.path.join(dirPath, imageFileName), img, angle, scale, True, True, cropBlackBorder))
+                            param.append((os.path.join(
+                                dirPath, imageFileName), img, angle, scale, True, True, cropBlackRotationBorder))
                             f.write(os.path.join(subDir, imageFileName) + '\n')
 
                         for dirPath in outFilePath:
@@ -115,7 +135,7 @@ class DataAugmentation:
                                 os.makedirs(dirPath)
 
                 pool = mp.Pool(processes=self.__numOfThreads)
-                pool.starmap(Utilities.transformAndSaveImage, param)                
+                pool.starmap(Utilities.transformAndSaveImage, param)
                 pool.terminate()
         except Exception as e:
             f.close()
@@ -132,15 +152,15 @@ class DataAugmentation:
         self.__flipHorizontal = enableHorizontal
         self.__flipVertical = enableVertical
 
-    def enableFlipHorizontally(self, enable: bool = True) -> None:
+    def enableFlipHorizontal(self, enable: bool = True) -> None:
         '''
         Enable horizontal flipping during data generation.
 
         enable Flag to en-/disable flipping.
         '''
         self.__flipHorizontal = enable
-    
-    def enableFlipVertically(self, enable: bool = True) -> None:
+
+    def enableFlipVertical(self, enable: bool = True) -> None:
         '''
         Enable vertical flipping during data generation.
 
@@ -190,14 +210,8 @@ class DataAugmentation:
         factor = 360.0 / float(numOfAngles)
 
         angles = [0]
-        
+
         while(angles[len(angles) - 1] < (360 - factor)):
             angles.append(angles[len(angles) - 1] + factor)
 
         return angles
-
-    
-if __name__ == '__main__':
-    aug = DataAugmentation('/home/tom/Pictures', '/home/tom/Pictures/out')
-    aug.enableFlipVertically()
-    aug.generateData()
