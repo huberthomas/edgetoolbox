@@ -14,7 +14,7 @@ Utilities and helper functions.
 def getFileNames(inputDir: str = None, supportedExtensions: list = ['png', 'jpg', 'jpeg']) -> List[str]:
     '''
     Get files e.g. (png, jpg, jpeg) from an input directory. It is case insensitive to the extensions.
-    
+
     inputDir Input directory that contains images.
 
     supportedExtensions Only files with supported extensions are included in the final list. Case insensitive.
@@ -175,9 +175,9 @@ def getCropCoordinates(angle: float = None, width: int = None, height: int = Non
     return x, y, bb['w'] - 2 * x, bb['h'] - 2 * y
 
 
-def printArgs(args) -> None:
+def argsToStr(args) -> None:
     '''
-    Print arguments to the console output.
+    Convert arguments to a string.
 
     args Arguments form input parser.
     '''
@@ -185,4 +185,4 @@ def printArgs(args) -> None:
     for x in args.__dict__:
         param += ('%s\t %s\n' % (x, str(args.__dict__[x])))
 
-    print(param)
+    return param
