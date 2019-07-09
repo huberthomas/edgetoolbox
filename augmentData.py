@@ -3,6 +3,7 @@ import logging
 import os
 import multiprocessing as mp
 import sys
+import time
 
 from edgelib.DataAugmentation import DataAugmentation
 from edgelib import Utilities
@@ -16,6 +17,7 @@ def checkInputParameter(args) -> any:
 
     Returns parsed arguments. Throws exception if error occurs.
     '''
+    # input directory
     if args.inputDir == None or not os.path.exists(args.inputDir):
         raise ValueError('Invalid input directory.')
 
@@ -46,15 +48,13 @@ def checkInputParameter(args) -> any:
     args.numberOfAngles = abs(args.numberOfAngles)
 
     if args.numberOfAngles == 0:
-        raise ValueError(
-            'Invalid number of angles. Must be a value greater than 0.')
+        raise ValueError('Invalid number of angles. Must be a value greater than 0.')
 
     # threads
     args.threads = abs(args.threads)
 
     if args.threads > mp.cpu_count() or args.threads == 0:
-        raise ValueError(
-            'Invalid number of threads. Choose a value between 1 and %d.' % (mp.cpu_count()))
+        raise ValueError('Invalid number of threads. Choose a value between 1 and %d.' % (mp.cpu_count()))
 
     return args
 
@@ -63,26 +63,16 @@ def parseArgs() -> any:
     '''
     Parse user arguments.
     '''
-    parser = argparse.ArgumentParser(
-        description='Data augmentation from an input image directory.')
-    parser.add_argument('-i', '--inputDir', type=str, default=None,
-                        required=True, help='Input image directory.')
-    parser.add_argument('-o', '--outputDir', type=str, default=None,
-                        required=True, help='Image output directory. Subdirectory description: angle_flipH_flipV_scale.')
-    parser.add_argument('-s', '--scales', type=str, nargs='+', default='1',
-                        help='Set generated scales. Default [1].')
-    parser.add_argument('-a', '--angles', type=str, nargs='+', default=None,
-                        help='Data rotation angles in degrees.')
-    parser.add_argument('-na', '--numberOfAngles', type=int, default=16,
-                        help='Number of auto generated angles for rotating data. 360° will be split up to this number of angles. Default 16.')
-    parser.add_argument('-fh', '--flipHorizontal', default=False,
-                        action='store_true', help='Flip data horizontally. Default false.')
-    parser.add_argument('-fv', '--flipVertical', default=False,
-                        action='store_true', help='Flip data vertically. Default false.')
-    parser.add_argument('-c', '--cropBlackRotationBorder', default=True,
-                        action='store_true', help='Crop out black rotation border. Default true.')
-    parser.add_argument('-t', '--threads', type=int, default=mp.cpu_count(),
-                        help='Number of spawned threads to process data. Default is maximum number.')
+    parser = argparse.ArgumentParser(description='Data augmentation from an input image directory.')
+    parser.add_argument('-i', '--inputDir', type=str, default=None, required=True, help='Input image directory.')
+    parser.add_argument('-o', '--outputDir', type=str, default=None, required=True, help='Image output directory. Subdirectory description: angle_flipH_flipV_scale.')
+    parser.add_argument('-s', '--scales', type=str, nargs='+', default='1', help='Set generated scales. Default [1].')
+    parser.add_argument('-a', '--angles', type=str, nargs='+', default=None, help='Data rotation angles in degrees.')
+    parser.add_argument('-na', '--numberOfAngles', type=int, default=16, help='Number of auto generated angles for rotating data. 360° will be split up to this number of angles. Default 16.')
+    parser.add_argument('-fh', '--flipHorizontal', default=False, action='store_true', help='Flip data horizontally. Default false.')
+    parser.add_argument('-fv', '--flipVertical', default=False, action='store_true', help='Flip data vertically. Default false.')
+    parser.add_argument('-c', '--cropBlackRotationBorder', default=True, action='store_true', help='Crop out black rotation border. Default true.')
+    parser.add_argument('-t', '--threads', type=int, default=mp.cpu_count(), help='Number of spawned threads to process data. Default is maximum number.')
 
     return parser.parse_args()
 
@@ -94,7 +84,7 @@ def main() -> None:
     try:
         args = parseArgs()
         args = checkInputParameter(args)
-        Utilities.printArgs(args)
+        print(Utilities.argsToStr(args))
 
         aug = DataAugmentation(args.inputDir, args.outputDir)
         aug.setScales(args.scales)
@@ -112,8 +102,12 @@ def main() -> None:
 
         aug.setNumOfThreads(args.threads)
         aug.setCropBlackRotationBorder(args.cropBlackRotationBorder)
-        aug.generateData()
 
+        startTime = time.time()
+        aug.generateData()
+        elapsedTime = time.time() - startTime
+
+        logging.info('Finished in %.4f sec' % (elapsedTime))
         sys.exit(0)
     except Exception as e:
         logging.error(e)
@@ -121,8 +115,7 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    logging.basicConfig(
-        format='%(asctime)s %(levelname)s:\t%(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='%(asctime)s %(levelname)s:\t%(message)s', level=logging.DEBUG)
     print('#################')
     print('Data Augmentation')
     print('#################')

@@ -62,8 +62,7 @@ class DataAugmentation:
         scales Array that contains scale values.
         '''
         if scales is None or len(scales) == 0:
-            raise ValueError(
-                'Scales must be an array that contains scale values.')
+            raise ValueError('Scales must be an array that contains scale values.')
 
         self.__scales = scales
 
@@ -73,8 +72,7 @@ class DataAugmentation:
         augmented data.
         '''
         if numOfThreads is None or numOfThreads <= 0:
-            raise ValueError(
-                'Number of threads must be an interger value greater than 0.')
+            raise ValueError('Number of threads must be an interger value greater than 0.')
 
         self.__numOfThreads = numOfThreads
 
@@ -102,8 +100,7 @@ class DataAugmentation:
                             angle, False, False, scale)
                         dirPath = os.path.join(self.__outputDir, subDir)
                         outFilePath = [dirPath]
-                        param.append((os.path.join(dirPath, imageFileName),
-                                      img, angle, scale, False, False, cropBlackRotationBorder))
+                        param.append((os.path.join(dirPath, imageFileName), img, angle, scale, False, False, cropBlackRotationBorder))
                         f.write(os.path.join(subDir, imageFileName) + '\n')
 
                         if self.__flipHorizontal:
@@ -111,8 +108,7 @@ class DataAugmentation:
                                 angle, True, False, scale)
                             dirPath = os.path.join(self.__outputDir, subDir)
                             outFilePath.append(dirPath)
-                            param.append((os.path.join(
-                                dirPath, imageFileName), img, angle, scale, True, False, cropBlackRotationBorder))
+                            param.append((os.path.join(dirPath, imageFileName), img, angle, scale, True, False, cropBlackRotationBorder))
                             f.write(os.path.join(subDir, imageFileName) + '\n')
 
                         if self.__flipVertical:
@@ -120,8 +116,7 @@ class DataAugmentation:
                                 angle, False, True, scale)
                             dirPath = os.path.join(self.__outputDir, subDir)
                             outFilePath.append(dirPath)
-                            param.append((os.path.join(
-                                dirPath, imageFileName), img, angle, scale, False, True, cropBlackRotationBorder))
+                            param.append((os.path.join(dirPath, imageFileName), img, angle, scale, False, True, cropBlackRotationBorder))
                             f.write(os.path.join(subDir, imageFileName) + '\n')
 
                         if self.__flipHorizontal and self.__flipVertical:
@@ -129,8 +124,7 @@ class DataAugmentation:
                                 angle, True, True, scale)
                             dirPath = os.path.join(self.__outputDir, subDir)
                             outFilePath.append(dirPath)
-                            param.append((os.path.join(
-                                dirPath, imageFileName), img, angle, scale, True, True, cropBlackRotationBorder))
+                            param.append((os.path.join(dirPath, imageFileName), img, angle, scale, True, True, cropBlackRotationBorder))
                             f.write(os.path.join(subDir, imageFileName) + '\n')
 
                         for dirPath in outFilePath:
