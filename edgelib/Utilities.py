@@ -183,6 +183,6 @@ def argsToStr(args) -> None:
     '''
     param = ''
     for x in args.__dict__:
-        param += ('%s\t %s\n' % (x, str(args.__dict__[x])))
+        param += ('%s\t%s\n' % (x, str(args.__dict__[x])))
 
     return param
