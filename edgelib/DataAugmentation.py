@@ -83,7 +83,7 @@ class DataAugmentation:
         '''
         imageFileNames = Utilities.getFileNames(self.__inputDir)
 
-        f = open(os.path.join(self.__outputDir, "data.txt"), "w")
+        dataFile = open(os.path.join(self.__outputDir, "data.txt"), "w")
 
         try:
             for imageFileName in imageFileNames:
@@ -101,7 +101,7 @@ class DataAugmentation:
                         dirPath = os.path.join(self.__outputDir, subDir)
                         outFilePath = [dirPath]
                         param.append((os.path.join(dirPath, imageFileName), img, angle, scale, False, False, cropBlackRotationBorder))
-                        f.write(os.path.join(subDir, imageFileName) + '\n')
+                        dataFile.write(os.path.join(subDir, imageFileName) + '\n')
 
                         if self.__flipHorizontal:
                             subDir = '%.1f_%d_%d_%.1f' % (
@@ -109,7 +109,7 @@ class DataAugmentation:
                             dirPath = os.path.join(self.__outputDir, subDir)
                             outFilePath.append(dirPath)
                             param.append((os.path.join(dirPath, imageFileName), img, angle, scale, True, False, cropBlackRotationBorder))
-                            f.write(os.path.join(subDir, imageFileName) + '\n')
+                            dataFile.write(os.path.join(subDir, imageFileName) + '\n')
 
                         if self.__flipVertical:
                             subDir = '%.1f_%d_%d_%.1f' % (
@@ -117,7 +117,7 @@ class DataAugmentation:
                             dirPath = os.path.join(self.__outputDir, subDir)
                             outFilePath.append(dirPath)
                             param.append((os.path.join(dirPath, imageFileName), img, angle, scale, False, True, cropBlackRotationBorder))
-                            f.write(os.path.join(subDir, imageFileName) + '\n')
+                            dataFile.write(os.path.join(subDir, imageFileName) + '\n')
 
                         if self.__flipHorizontal and self.__flipVertical:
                             subDir = '%.1f_%d_%d_%.1f' % (
@@ -125,7 +125,7 @@ class DataAugmentation:
                             dirPath = os.path.join(self.__outputDir, subDir)
                             outFilePath.append(dirPath)
                             param.append((os.path.join(dirPath, imageFileName), img, angle, scale, True, True, cropBlackRotationBorder))
-                            f.write(os.path.join(subDir, imageFileName) + '\n')
+                            dataFile.write(os.path.join(subDir, imageFileName) + '\n')
 
                         for dirPath in outFilePath:
                             if not os.path.exists(dirPath):
@@ -135,8 +135,10 @@ class DataAugmentation:
                 pool.starmap(Utilities.transformAndSaveImage, param)
                 pool.terminate()
         except Exception as e:
-            f.close()
+            dataFile.close()
             raise e
+            
+        dataFile.close()
 
     def enableFlip(self, enableHorizontal: bool = True, enableVertical: bool = True) -> None:
         '''
