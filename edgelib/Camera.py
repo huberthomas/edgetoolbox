@@ -5,13 +5,14 @@ import numpy as np
 
 class Camera:
     '''
+    The camera describe the camera parameters like the camera matrix,
+    distortion coefficients and the depth scale factor. It is possible to read and write the 
+    parameters to a file. 
     '''
 
     def __init__(self) -> None:
         '''
-        Constructor. The camera describe the camera parameters like the camera matrix,
-        distortion coefficients and much more. It is possible to read and write the 
-        parameters to a file. 
+        Constructor.
         '''
         self.cameraMatrix = np.zeros((3, 3))
         self.distortionCoefficients = np.zeros(5)
