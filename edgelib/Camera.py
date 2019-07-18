@@ -48,7 +48,7 @@ class Camera:
 
         self.depthScaleFactor = factor
 
-    def setCameraMatrix(self, cameraMatrix: np.array = None) -> None:
+    def setCameraMatrix(self, cameraMatrix: np.ndarray = None) -> None:
         '''
         Set the 3x3 camera matrix.
 
@@ -59,13 +59,13 @@ class Camera:
 
         self.cameraMatrix = cameraMatrix
 
-    def setDistortionCoefficients(self, distortionCoefficients: np.array = None) -> None:
+    def setDistortionCoefficients(self, distortionCoefficients: np.ndarray = None) -> None:
         '''
         Set the 1x5 distortion coefficients.
 
         distortionCoefficients 1x5 distortion coefficients.        
         '''
-        if distortionCoefficients is None or not distortionCoefficients.shape == (5, 1):            
+        if distortionCoefficients is None or not distortionCoefficients.shape == (5, 1):
             raise ValueError('Invalid distortion coefficients. Must be 1x5, not %dx%d.' % (distortionCoefficients.shape))
 
         self.distortionCoefficients = distortionCoefficients
@@ -128,3 +128,75 @@ class Camera:
             fs.release()
         except Exception as e:
             raise e
+
+    def fx(self) -> float:
+        '''
+        Focal length x.
+
+        Returns focal length x.
+        '''
+        return self.cameraMatrix.item((0, 0))
+
+    def fy(self) -> float:
+        '''
+        Focal length y.
+
+        Returns focal length y.
+        '''
+        return self.cameraMatrix.item((1, 1))
+
+    def cx(self) -> float:
+        '''
+        Principal point x.
+
+        Returns principal length x.
+        '''
+        return self.cameraMatrix.item((0, 2))
+
+    def cy(self) -> float:
+        '''
+        Principal point y.
+
+        Returns principal point y.
+        '''
+        return self.cameraMatrix.item((1, 2))
+
+    def d1(self) -> float:
+        '''
+        Distortion coefficient 1.
+
+        Returns distortion coefficient 1.
+        '''
+        return self.distortionCoefficients(0)
+
+    def d2(self) -> float:
+        '''
+        Distortion coefficient 2.
+
+        Returns distortion coefficient 2.
+        '''
+        return self.distortionCoefficients(1)
+
+    def d3(self) -> float:
+        '''
+        Distortion coefficient 3.
+
+        Returns distortion coefficient 3.
+        '''
+        return self.distortionCoefficients(2)
+
+    def d4(self) -> float:
+        '''
+        Distortion coefficient 4.
+
+        Returns distortion coefficient 4.
+        '''
+        return self.distortionCoefficients(3)
+
+    def d5(self) -> float:
+        '''
+        Distortion coefficient 5.
+
+        Returns distortion coefficient 5.
+        '''
+        return self.distortionCoefficients(4)
