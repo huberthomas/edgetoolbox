@@ -8,6 +8,9 @@ import multiprocessing as mp
 from edgelib import Utilities
 from edgelib import ImageProcessing
 
+import matplotlib
+import matplotlib.pyplot as plt
+
 def checkInputParameter(args: any) -> any:
     '''
     Check the input parameter from argparse.
@@ -75,6 +78,14 @@ def processAndSaveReconstructedDepthImg(imgFilePath: str = None,
     try:
         porousDepthImg = cv2.imread(imgFilePath, cv2.IMREAD_UNCHANGED)
         restoredImg = ImageProcessing.reconstructDepthImg(porousDepthImg, inpaintRadius, inpaintMethod)
+
+        # fig = plt.figure(figsize=(1, 2))
+        # fig.add_subplot(1,2,1)
+        # plt.imshow(porousDepthImg)
+        # fig.add_subplot(1,2,2)
+        # plt.imshow(restoredImg)
+        # plt.show()
+
         cv2.imwrite(outFilePath, restoredImg)
     except Exception as e:
         raise e
