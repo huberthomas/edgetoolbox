@@ -14,7 +14,7 @@ def checkInputParameter(args: any) -> any:
 
     Returns parsed arguments. Throws exception if error occurs.
     '''
-    if args.groundTruth == None or not os.path.exists(args.groundTruth):
+    if args.groundTruthFile == None or not os.path.exists(args.groundTruthFile):
         raise ValueError('Invalid ground truth file.')
 
     if args.rgbDir == None or not os.path.exists(args.rgbDir):
@@ -42,7 +42,7 @@ def parseArgs() -> any:
     Parse user arguments.
     '''
     parser = argparse.ArgumentParser(description='Reconstruct undefined areas in a depth image.')
-    parser.add_argument('-g', '--groundTruth', type=str, default=None, required=True, help='TUM ground truth file, e.g. groundtruth.txt.')
+    parser.add_argument('-g', '--groundTruthFile', type=str, default=None, required=True, help='TUM ground truth file, e.g. groundtruth.txt.')
     parser.add_argument('-r', '--rgbDir', type=str, default=None, required=True, help='RGB image directory.')    
     parser.add_argument('-d', '--depthDir', type=str, default=None, required=True, help='Depth image directory.')
     parser.add_argument('-o', '--outputFile', type=str, default=None, required=True, help='Result associated ground truth file.')    
@@ -65,7 +65,7 @@ def main() -> None:
         startTime = time.time()
         gtHandler = TumGroundTruthHandler()
         gtHandler.progress = displayProgress
-        gtHandler.associate(args.groundTruth, args.rgbDir, args.depthDir, args.maxDifference)
+        gtHandler.associate(args.groundTruthFile, args.rgbDir, args.depthDir, args.maxDifference)
         gtHandler.save(args.outputFile)
         elapsedTime = time.time() - startTime
         print('\n')
