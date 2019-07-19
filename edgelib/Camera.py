@@ -16,7 +16,7 @@ class Camera:
         '''
         self.cameraMatrix = np.zeros((3, 3))
         self.distortionCoefficients = np.zeros(5)
-        self.depthScaleFactor = 1
+        self.depthScaleFactor = 1.0
 
         self.__tagCameraMatrix = 'cameraMatrix'
         self.__tagDistortionCoefficients = 'distortionCoefficients'
