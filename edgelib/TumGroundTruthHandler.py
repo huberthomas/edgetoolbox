@@ -24,6 +24,12 @@ class TumGroundTruthHandler:
         '''
         self.__associations = {}
 
+    def data(self) -> List[TumGtAssociated]:
+        '''
+        Get the associated data.
+        '''
+        return self.__associations.values()
+
     def progress(self, percentage: float = None) -> None:
         '''
         Function stup that can be overwritten to get the progress of some functions.
@@ -115,7 +121,7 @@ class TumGroundTruthHandler:
                 entries = line.split(' ')
 
                 if len(entries) < 10:
-                    logging.info('Skipping line "%s"' % (line))
+                    logging.info('Wrong file format? Less than 10 entries. Skipping line "%s"' % (line))
                     continue
 
                 association = TumGtAssociated()
@@ -199,7 +205,7 @@ class TumGroundTruthHandler:
                     continue
 
                 gta = TumGtAssociated()
-                gta.readAssociatedGroundTruth(line)
+                gta.loadFromStringLine(line)
                 gta.rgb = os.path.join(rgbDirPath, gta.rgb)
                 gta.depth = os.path.join(depthDirPath, gta.depth)
 
