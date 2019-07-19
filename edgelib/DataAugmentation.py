@@ -12,7 +12,8 @@ mp.set_start_method('spawn', True)
 
 class DataAugmentation:
     '''
-    This class generates augmented data out of an existing image folder.
+    This class generates augmented data out of an existing image folder. Supported is
+    rotation and flipping of input data.
     '''
 
     def __init__(self, inputDir: str = None, outputDir: str = None) -> None:
