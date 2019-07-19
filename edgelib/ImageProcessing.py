@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import List
-from Camera import Camera
+from edgelib.Camera import Camera
 
 
 def reconstructDepthImg(porousDepthImg: np.ndarray = None,
@@ -58,7 +58,7 @@ def projectToImage(camera: Camera = None, xyzCoords: np.ndarray = None) -> np.nd
     if type(xyzCoords) is not np.ndarray:
         raise ValueError('Invalid coordinate type. Must be from type numpy.')
 
-    z = xyzCoords[2]
+    z = float(xyzCoords[2])
 
     if z == 0:
         raise ValueError('Invalid z coordinate. Must be greater than 0.')
@@ -89,8 +89,8 @@ def projectToWorld(camera: Camera = None, uvzCoords: np.ndarray = None) -> np.nd
         raise ValueError('Invalid coordinate type. Must be from type numpy.')
 
     Z = uvzCoords[2]
-    X = (uvzCoords[0] - camera.cx()) * Z / camera.fx()
-    Y = (uvzCoords[1] - camera.cy()) * Z / camera.fy()
+    X = (uvzCoords[0] - camera.cx()) * Z / float(camera.fx())
+    Y = (uvzCoords[1] - camera.cy()) * Z / float(camera.fy())
 
     return np.array([X, Y, Z])
 
@@ -105,12 +105,13 @@ def getInterpolatedElement(mat: np.ndarray = None, x: float = None, y: float = N
     dx = x - ix
     dy = y - iy
     dxdy = dx * dy
-    bp = mat + ix + (iy * width)
+    index = ix + (iy * width)
 
-    res = dxdy * bp[1 + width]
-    + (dy - dxdy) * bp[width]
-    + (dx - dxdy) * bp[1]
-    + (1 - dx - dy + dxdy) * bp[0]
+    res = dxdy * mat.item(index + 1 + width)
+    + (dy - dxdy) * mat.item(index + width)
+    + (dx - dxdy) * mat.item(index + 1)
+    + (1 - dx - dy + dxdy) * mat.item(index)
+
 
     return res
 
