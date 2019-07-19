@@ -2,7 +2,7 @@ import sys
 import numpy as np
 from typing import List
 
-sys.path.insert(0, '../dependencies/sophus/py/')
+sys.path.insert(0, 'dependencies/sophus/py/')
 import sophus
 
 class Frame:
