@@ -181,10 +181,13 @@ def argsToStr(args) -> None:
 
     args Arguments form input parser.
     '''
-    param = ''
+    param = '*'*80
+    param += '\nParameter\n'
+    param += '*'*80
+    param += '\n'
     for x in args.__dict__:
         param += ('%s\t%s\n' % (x, str(args.__dict__[x])))
-
+    param += '*'*80
     return param
 
 
