@@ -9,6 +9,9 @@ class TumGroundTruth:
     '''
 
     def __init__(self):
+        '''
+        Constructor. 
+        '''
         # number of seconds since the Unix epoch
         self.timestamp = 0
         # tx,ty,tz: the position of the optical center of the color camera with respect to the
@@ -30,7 +33,7 @@ class TumGroundTruth:
             raise ValueError('Line is empty.')
 
         line = line.strip()
-        entries = line.split('\t *')
+        entries = line.split(' ')
 
         if len(entries) < 8:
             raise ValueError('Missing information.')
