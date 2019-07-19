@@ -5,9 +5,10 @@ from typing import List
 sys.path.insert(0, '../dependencies/sophus/py/')
 import sophus
 
-
 class Frame:
     '''
+    A frame contains all information of a current scene at a defined time point. It is the information
+    that a possible sensor collects during a record.
     '''
 
     def __init__(self) -> None:
@@ -21,7 +22,7 @@ class Frame:
 
     def setT(self, q: List[float] = None, t: List[float] = None) -> None:
         '''
-        Set the transformation matrix.
+        Set the transformation matrix based on a quaternion and a translation.
 
         q Quaternion (w, x, y, z).
 
@@ -61,5 +62,3 @@ class Frame:
         f = Frame()
         f.setT([-0.3707, 0.8752, 0.2850, -0.1243], (1.2742, 0.8795, 1.5136))
 
-
-#Frame.test()
