@@ -107,7 +107,8 @@ class TumGroundTruthHandler:
             f = open(filePath, 'r')
             
             counter = -1
-            total = len(f.readlines())           
+            total = len(f.readlines())
+
             # reset file pointer after readlines
             f.seek(0)
 
@@ -254,14 +255,14 @@ class TumGroundTruthHandler:
         ascIndex = 0
 
         for rgbFile in rgbFiles:
-            rgbTimestamp = np.float(Path(rgbFile).resolve().stem)
+            rgbTimestamp = np.float64(Path(rgbFile).resolve().stem)
 
             foundCandidateIndex = -1
             minDifference = sys.float_info.max
 
             for i in range(ascIndex, len(depthFiles)):
                 depthFile = depthFiles[i]
-                depthTimestamp = np.float(Path(depthFile).resolve().stem)
+                depthTimestamp = np.float64(Path(depthFile).resolve().stem)
 
                 diff = abs(rgbTimestamp - depthTimestamp)
 
@@ -292,8 +293,8 @@ class TumGroundTruthHandler:
         associations = {}
         ascIndex = 0
         for files in dirAssociations:
-            rgbTimestamp = np.float(Path(files[0]).resolve().stem)
-            depthTimestamp = np.float(Path(files[1]).resolve().stem)
+            rgbTimestamp = np.float64(Path(files[0]).resolve().stem)
+            depthTimestamp = np.float64(Path(files[1]).resolve().stem)
 
             foundCandidateIndex = -1
             minDiff = sys.float_info.max

@@ -111,8 +111,8 @@ def cannyAscendingThreshold(img: np.ndarray = None,
         img = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
 
     blurredImg = cv2.blur(img, (blurKernelSize, blurKernelSize))
-    edgeImg = np.zeros((h, w), np.float)
-    resImg = np.zeros((h, w), np.float)
+    edgeImg = np.zeros((h, w), np.float64)
+    resImg = np.zeros((h, w), np.float64)
 
 
     i = 0

@@ -2,10 +2,20 @@ from edgelib.Camera import Camera
 from edgelib.Frame import Frame
 import time
 import numpy as np
-import cv2
+import cv2 as cv
 from edgelib import ImageProcessing
 import matplotlib.pyplot as plt
 from typing import List
+import logging
+from enum import IntEnum
+
+class EdgeMatcherMode(IntEnum):
+    # back to front projection
+    REPROJECT = 1
+    # front to back projetion
+    BACKPROJECT = 2
+    # back to front and front to back projection to a center frame (re- and backproject)
+    CENTERPROJECT = 3
 
 
 class EdgeMatcher:
@@ -26,6 +36,7 @@ class EdgeMatcher:
         self.__edgeDistanceUpperBoundary = 10
         self.__frameOffset = 1
         self.__camera = camera
+
 
     def setEdgeDistanceBoundaries(self, lowerBoundary: float = None, upperBoundary: float = None) -> None:
         '''
@@ -69,13 +80,15 @@ class EdgeMatcher:
 
         self.__frameOffset = frameOffset
 
-    def reprojectEdgesFromConsecutiveFrameSet(self, frame: Frame = None) -> np.ndarray:
+    def reprojectEdgesFromConsecutiveFrameSet(self, frame: Frame = None, mode: EdgeMatcherMode = EdgeMatcherMode.REPROJECT) -> np.ndarray:
         '''
         Reproject edges based on the frame offset.
 
         frame Current frame information.
 
-        meaningfulEdges Result edges are stored in this structure.
+        Returns meaningful edges. Channel 1: below or equal lower boundary, 
+        channel 2: between lower and upper boundary, channel 3: above upper boundary and
+        channel 4 distance between mask and reprojected point value.
         '''
         if not frame.isValid():
             raise ValueError('Invalid frame.')
@@ -83,46 +96,78 @@ class EdgeMatcher:
         # fill frame set
         self.__frameSet.append(frame)
 
-        if len(self.__frameSet) <= self.__frameOffset:
+        maxFrameOffset = self.__frameOffset
+
+        if mode == EdgeMatcherMode.CENTERPROJECT:
+            maxFrameOffset = 2 * self.__frameOffset
+        
+        if len(self.__frameSet) < (maxFrameOffset + 1):
             return None
 
-        h, w = frame.mask.shape
-        meaningfulEdges = np.zeros((h, w), np.uint8)
+        if mode == EdgeMatcherMode.REPROJECT:
+            destFrame = frame
+        elif mode == EdgeMatcherMode.BACKPROJECT:
+            destFrame = self.__frameSet[0]
+        elif mode == EdgeMatcherMode.CENTERPROJECT:
+            destFrame = self.__frameSet[self.__frameOffset]
+        else:
+            raise ValueError('Unsupported projection mode.')
 
-        for i in range(0, self.__frameOffset):
+
+        h, w = destFrame.mask.shape
+        meaningfulEdges = np.zeros((h, w, 4))
+        distTransMat = cv.distanceTransform(255 - destFrame.mask, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+
+        for i in range(0, maxFrameOffset):
+            if mode == EdgeMatcherMode.CENTERPROJECT:
+                # avoid destination frame projection
+                if i == self.__frameOffset:
+                    continue
+            
             start = time.time()
-            reprojectedEdges = self.reprojectEdges(self.__frameSet[i], frame)
-            print(time.time() - start)
-            best, good, worse, d = cv2.split(reprojectedEdges)
 
-            # plt.figure(1)
-            # plt.subplot(131)
-            # plt.imshow(best)
-            # plt.subplot(132)
-            # plt.imshow(good)
-            # plt.subplot(133)
-            # plt.imshow(worse)
-            # plt.show()
+            if mode == EdgeMatcherMode.REPROJECT or (mode == EdgeMatcherMode.CENTERPROJECT and i < self.__frameOffset):
+                projectedEdges = self.projectEdges(self.__frameSet[i], destFrame, distTransMat)
+                logging.info('Reprojected %d in %f sec.' % (i, time.time() - start))
+            elif mode == EdgeMatcherMode.BACKPROJECT or (mode == EdgeMatcherMode.CENTERPROJECT and i > self.__frameOffset):
+                projectedEdges = self.projectEdges(self.__frameSet[maxFrameOffset - i - 1], destFrame, distTransMat)
+                logging.info('Backprojected %d in %f sec.' % (i, time.time() - start))
 
-            # combine best and good
-            # meaningfulEdges = cv2.add(meaningfulEdges, reprojectedEdges.item(: , : , 0))
-            # meaningfulEdges = cv2.add(meaningfulEdges, reprojectedEdges.item(: , : , 1))
+            # accumulate values
+            meaningfulEdges = cv.add(meaningfulEdges, projectedEdges)
 
-        self.__frameSet.pop(0)
+        best, good, worse, _ = cv.split(meaningfulEdges)
+        meaningfulEdges = cv.add(best, good)
 
         # remove values less the n times seen
-        # minNumOfFramesDetected = self.__frameOffset * 0.25
-        # detectedInFrames = cv2.threshold(detectedInFrames, minNumOfFramesDetected, 255, cv2.CV_8UC1)
+        minNumOfFramesDetected = self.__frameOffset * 0.25
+        _, meaningfulEdges = cv.threshold(meaningfulEdges, minNumOfFramesDetected, 255, cv.THRESH_BINARY)
+
+        # plt.figure(1)
+        # plt.subplot(221)
+        # plt.imshow(best)
+        # plt.subplot(222)
+        # plt.imshow(good)
+        # plt.subplot(223)
+        # plt.imshow(worse)
+        # plt.subplot(224)
+        # plt.imshow(meaningfulEdges)
+        # plt.show()
+
+        # remove first frame from frame set
+        self.__frameSet.pop(0)
 
         return meaningfulEdges
 
-    def reprojectEdges(self, frameFrom: Frame = None, frameTo: Frame = None) -> np.ndarray:
+    def projectEdges(self, frameFrom: Frame = None, frameTo: Frame = None, distTransMat: np.ndarray = None) -> np.ndarray:
         '''
-        Reproject edges from one frame to another.
+        Project edges from one frame to another.
 
         frameFrom Frame that should be projected to.
 
         frameTo Frame on that is projected.
+
+        distTransMat Distance matrix that contains the distance transform values.
 
         Returns matrix that contains the result of the reprojection. 
         1 channel: best with distance <= edgeDistanceLowerBoundary
@@ -136,48 +181,62 @@ class EdgeMatcher:
         if not frameTo.isValid():
             raise ValueError('Invalid from to.')
 
-        if self.__camera.depthScaleFactor == 0:
+        if self.__camera.depthScaleFactor() == 0:
             raise ValueError('Invalid depth scale factor.')
 
-        dist = cv2.distanceTransform(255 - frameTo.mask, cv2.DIST_L2, cv2.DIST_MASK_PRECISE)
-
-        invFrameToT = frameTo.T.inv()
+        if distTransMat is None:
+            distTransMat = cv.distanceTransform(255 - frameTo.mask, cv.DIST_L2, cv.DIST_MASK_PRECISE)
 
         h, w = frameFrom.mask.shape
-        reprojectedEdges = np.zeros((h, w, 4))
+        reprojectedEdges = np.zeros((h, w, 3), np.float64)
+        distChannel = np.full((h, w), -1, np.float64)
+        reprojectedEdges = np.dstack((reprojectedEdges, distChannel))
 
         for u in range(0, w):
             for v in range(0, h):
 
-                reprojectedEdges.itemset((v, u, 3), -1)
-
                 if frameFrom.mask.item(v, u) == 0:
                     continue
 
-                z = frameFrom.depth.item(v, u) / float(self.__camera.depthScaleFactor)
+                if frameFrom.depth.item(v, u) == 0:
+                    continue
+
+                z = np.float64(frameFrom.depth.item(v, u)) / np.float64(self.__camera.depthScaleFactor())
 
                 if z == 0:
                     continue
 
-                # projection
-                xyzCoords = ImageProcessing.projectToWorld(self.__camera, np.array([u, v, z]))
-                P = np.array([xyzCoords[0], xyzCoords[1], z, 1])
-                Q = invFrameToT * (frameFrom.T * P)
-                uvCoords = ImageProcessing.projectToImage(self.__camera, np.array([Q[0], Q[1], Q[2]]))
+                # project to world coordinate system
+                xyzCoords = ImageProcessing.projectToWorld(self.__camera, np.array([u, v, z], np.float64))
+
+                # rotate, translate point P = [x, y, z, 1] -> uvCoords = frameToInvT * (frameFromT * P))
+                p1 = frameFrom.T.item((0, 0)) * xyzCoords[0] + frameFrom.T.item((0, 1)) * xyzCoords[1] + frameFrom.T.item((0, 2)) * z + frameFrom.T.item((0, 3))
+                p2 = frameFrom.T.item((1, 0)) * xyzCoords[0] + frameFrom.T.item((1, 1)) * xyzCoords[1] + frameFrom.T.item((1, 2)) * z + frameFrom.T.item((1, 3))
+                p3 = frameFrom.T.item((2, 0)) * xyzCoords[0] + frameFrom.T.item((2, 1)) * xyzCoords[1] + frameFrom.T.item((2, 2)) * z + frameFrom.T.item((2, 3))
+                q1 = frameTo.invT().item((0, 0)) * p1 + frameTo.invT().item((0, 1)) * p2 + frameTo.invT().item((0, 2)) * p3 + frameTo.invT().item((0, 3))
+                q2 = frameTo.invT().item((1, 0)) * p1 + frameTo.invT().item((1, 1)) * p2 + frameTo.invT().item((1, 2)) * p3 + frameTo.invT().item((1, 3))
+                q3 = frameTo.invT().item((2, 0)) * p1 + frameTo.invT().item((2, 1)) * p2 + frameTo.invT().item((2, 2)) * p3 + frameTo.invT().item((2, 3))
+
+                # project found 3d point Q back to the image plane
+                uvCoords = ImageProcessing.projectToImage(self.__camera, np.array([q1, q2, q3], np.float64))
 
                 # boundary check
-                if uvCoords[0] < 0 or uvCoords[1] < 0 or uvCoords[0] >= w or uvCoords[1] >= h:
+                if uvCoords[0] < 0 or uvCoords[1] < 0 or uvCoords[0] > (w-1) or uvCoords[1] > (h-1):
                     continue
 
-                distVal = ImageProcessing.getInterpolatedElement(dist, uvCoords[0], uvCoords[1], w)
+                distVal = ImageProcessing.getInterpolatedElement(distTransMat, uvCoords[0], uvCoords[1])
 
-                reprojectedEdges.itemset((v, u, 3), distVal)
+                iu = int(uvCoords[0])
+                iv = int(uvCoords[1])
 
                 if distVal <= self.__edgeDistanceLowerBoundary:
-                    reprojectedEdges.itemset((v, u, 0), reprojectedEdges.item((v, u, 0)) + 1)
+                    reprojectedEdges.itemset((iv, iu, 0), reprojectedEdges.item((iv, iu, 0)) + 1)
                 elif distVal > self.__edgeDistanceLowerBoundary and distVal <= self.__edgeDistanceUpperBoundary:
-                    reprojectedEdges.itemset((v, u, 1), reprojectedEdges.item((v, u, 1)) + 1)
+                    reprojectedEdges.itemset((iv, iu, 1), reprojectedEdges.item((iv, iu, 1)) + 1)
                 elif distVal > self.__edgeDistanceUpperBoundary:
-                    reprojectedEdges.itemset((v, u, 2), reprojectedEdges.item((v, u, 2)) + 1)
+                    reprojectedEdges.itemset((iv, iu, 2), reprojectedEdges.item((iv, iu, 2)) + 1)
+
+                # store distance value in 4th channel
+                reprojectedEdges.itemset((iv, iu, 3), distVal)
 
         return reprojectedEdges

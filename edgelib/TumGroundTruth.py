@@ -13,13 +13,13 @@ class TumGroundTruth:
         Constructor. 
         '''
         # number of seconds since the Unix epoch
-        self.timestamp = 0
+        self.timestamp = np.float64(0.0)
         # tx,ty,tz: the position of the optical center of the color camera with respect to the
         # world origin as defined by the motion capture system
-        self.t = np.zeros((3, 1))
+        self.t = np.zeros((3, 1), np.float64)
         # qx, qy, qz, qw: the orientation of the optical center of the color camera in form of a unit
         # quaternion with respect to the world origin as defined by the motion capture system
-        self.q = np.zeros((4, 1))
+        self.q = np.zeros((4, 1), np.float64)
 
     def loadFromStringLine(self, line: str = None):
         '''
@@ -38,11 +38,11 @@ class TumGroundTruth:
         if len(entries) < 8:
             raise ValueError('Missing information.')
 
-        self.timestamp = np.float(entries[0])
-        self.t[0] = np.float(entries[1])
-        self.t[1] = np.float(entries[2])
-        self.t[2] = np.float(entries[3])
-        self.q[0] = np.float(entries[7])
-        self.q[1] = np.float(entries[4])
-        self.q[2] = np.float(entries[5])
-        self.q[3] = np.float(entries[6])
+        self.timestamp = np.float64(entries[0])
+        self.t[0] = np.float64(entries[1])
+        self.t[1] = np.float64(entries[2])
+        self.t[2] = np.float64(entries[3])
+        self.q[0] = np.float64(entries[7])
+        self.q[1] = np.float64(entries[4])
+        self.q[2] = np.float64(entries[5])
+        self.q[3] = np.float64(entries[6])

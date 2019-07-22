@@ -14,9 +14,9 @@ class Camera:
         '''
         Constructor.
         '''
-        self.cameraMatrix = np.zeros((3, 3))
-        self.distortionCoefficients = np.zeros(5)
-        self.depthScaleFactor = 1.0
+        self.__cameraMatrix = np.zeros((3, 3), np.float64)
+        self.__distortionCoefficients = np.zeros(5, np.float64)
+        self.__depthScaleFactor = np.float64(1.0)
 
         self.__tagCameraMatrix = 'cameraMatrix'
         self.__tagDistortionCoefficients = 'distortionCoefficients'
@@ -28,11 +28,35 @@ class Camera:
 
         Returns formatted class parameters.
         '''
-        out = '%s\n%s\n' % (self.__tagCameraMatrix, np.array2string(self.cameraMatrix))
-        out += '%s\n%s\n' % (self.__tagDistortionCoefficients, np.array2string(self.distortionCoefficients))
-        out += '%s\n%f' % (self.__tagDepthScaleFactor, self.depthScaleFactor)
+        out = '%s\n%s\n' % (self.__tagCameraMatrix, np.array2string(self.__cameraMatrix))
+        out += '%s\n%s\n' % (self.__tagDistortionCoefficients, np.array2string(self.__distortionCoefficients))
+        out += '%s\n%f' % (self.__tagDepthScaleFactor, self.__depthScaleFactor)
 
         return out
+
+    def distortionCoefficients(self) -> np.ndarray:
+        '''
+        Get the distortion coefficients.
+
+        Returns the distortion coefficients d1 - d5.
+        '''
+        return self.__distortionCoefficients
+
+    def cameraMatrix(self) -> np.ndarray:
+        '''
+        Get the camera matrix.
+
+        Returns a 3x3 camera matrix.
+        '''
+        return self.__cameraMatrix
+
+    def depthScaleFactor(self) -> float:
+        '''
+        Get the depth scale factor.
+
+        Returns the depth scale factor.
+        '''
+        return self.__depthScaleFactor
 
     def setDepthScaleFactor(self, factor: float = None) -> None:
         '''
@@ -46,7 +70,7 @@ class Camera:
         if factor < 0:
             factor = abs(factor)
 
-        self.depthScaleFactor = factor
+        self.__depthScaleFactor = np.float64(factor)
 
     def setCameraMatrix(self, cameraMatrix: np.ndarray = None) -> None:
         '''
@@ -57,7 +81,7 @@ class Camera:
         if cameraMatrix is None or not cameraMatrix.shape == (3, 3):
             raise ValueError('Invalid camera matrix. Must be 3x3, not %dx%d.' % (cameraMatrix.shape))
 
-        self.cameraMatrix = cameraMatrix
+        self.__cameraMatrix = cameraMatrix.astype(np.float64)
 
     def setDistortionCoefficients(self, distortionCoefficients: np.ndarray = None) -> None:
         '''
@@ -68,7 +92,7 @@ class Camera:
         if distortionCoefficients is None or not distortionCoefficients.shape == (5, 1):
             raise ValueError('Invalid distortion coefficients. Must be 1x5, not %dx%d.' % (distortionCoefficients.shape))
 
-        self.distortionCoefficients = distortionCoefficients
+        self.__distortionCoefficients = distortionCoefficients.astype(np.float64)
 
     def loadFromFile(self, filePath: str = None) -> None:
         '''
@@ -122,9 +146,9 @@ class Camera:
             raise ValueError('Invalid file path.')
         try:
             fs = cv.FileStorage(filePath, cv.FILE_STORAGE_WRITE)
-            fs.write(self.__tagCameraMatrix, self.cameraMatrix)
-            fs.write(self.__tagDistortionCoefficients, self.distortionCoefficients)
-            fs.write(self.__tagDepthScaleFactor, self.depthScaleFactor)
+            fs.write(self.__tagCameraMatrix, self.__cameraMatrix)
+            fs.write(self.__tagDistortionCoefficients, self.__distortionCoefficients)
+            fs.write(self.__tagDepthScaleFactor, self.__depthScaleFactor)
             fs.release()
         except Exception as e:
             raise e
@@ -135,7 +159,7 @@ class Camera:
 
         Returns focal length x.
         '''
-        return self.cameraMatrix.item((0, 0))
+        return self.__cameraMatrix.item((0, 0))
 
     def fy(self) -> float:
         '''
@@ -143,7 +167,7 @@ class Camera:
 
         Returns focal length y.
         '''
-        return self.cameraMatrix.item((1, 1))
+        return self.__cameraMatrix.item((1, 1))
 
     def cx(self) -> float:
         '''
@@ -151,7 +175,7 @@ class Camera:
 
         Returns principal length x.
         '''
-        return self.cameraMatrix.item((0, 2))
+        return self.__cameraMatrix.item((0, 2))
 
     def cy(self) -> float:
         '''
@@ -159,7 +183,7 @@ class Camera:
 
         Returns principal point y.
         '''
-        return self.cameraMatrix.item((1, 2))
+        return self.__cameraMatrix.item((1, 2))
 
     def d1(self) -> float:
         '''
@@ -167,7 +191,7 @@ class Camera:
 
         Returns distortion coefficient 1.
         '''
-        return self.distortionCoefficients(0)
+        return self.__distortionCoefficients(0)
 
     def d2(self) -> float:
         '''
@@ -175,7 +199,7 @@ class Camera:
 
         Returns distortion coefficient 2.
         '''
-        return self.distortionCoefficients(1)
+        return self.__distortionCoefficients(1)
 
     def d3(self) -> float:
         '''
@@ -183,7 +207,7 @@ class Camera:
 
         Returns distortion coefficient 3.
         '''
-        return self.distortionCoefficients(2)
+        return self.__distortionCoefficients(2)
 
     def d4(self) -> float:
         '''
@@ -191,7 +215,7 @@ class Camera:
 
         Returns distortion coefficient 4.
         '''
-        return self.distortionCoefficients(3)
+        return self.__distortionCoefficients(3)
 
     def d5(self) -> float:
         '''
@@ -199,4 +223,4 @@ class Camera:
 
         Returns distortion coefficient 5.
         '''
-        return self.distortionCoefficients(4)
+        return self.__distortionCoefficients(4)

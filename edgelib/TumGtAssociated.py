@@ -36,13 +36,14 @@ class TumGtAssociated:
             raise ValueError('Missing information.')
 
         self.gt = TumGroundTruth()
-        self.gt.timestamp = np.float(entries[0])
-        self.gt.t[0] = np.float(entries[1])
-        self.gt.t[1] = np.float(entries[2])
-        self.gt.t[2] = np.float(entries[3])
-        self.gt.q[0] = np.float(entries[7])
-        self.gt.q[1] = np.float(entries[4])
-        self.gt.q[2] = np.float(entries[5])
-        self.gt.q[3] = np.float(entries[6])
+        self.gt.timestamp = np.float64(entries[0])
+        self.gt.t[0] = np.float64(entries[1])
+        self.gt.t[1] = np.float64(entries[2])
+        self.gt.t[2] = np.float64(entries[3])
+        self.gt.q[0] = np.float64(entries[7])
+        self.gt.q[1] = np.float64(entries[4])
+        self.gt.q[2] = np.float64(entries[5])
+        self.gt.q[3] = np.float64(entries[6])
+
         self.rgb = entries[8]
         self.depth = entries[9]

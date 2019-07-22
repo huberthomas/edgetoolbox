@@ -3,12 +3,13 @@ import argparse
 import time
 import os
 import sys
-import cv2
+import cv2 as cv
 from edgelib.TumGroundTruthHandler import TumGroundTruthHandler
-from edgelib.EdgeMatcher import EdgeMatcher
+from edgelib.EdgeMatcher import EdgeMatcher, EdgeMatcherMode
 from edgelib.Camera import Camera
 from edgelib.Frame import Frame
 from edgelib import Utilities
+import matplotlib.pyplot as plt
 
 def checkInputParameter(args: any) -> any:
     '''
@@ -20,22 +21,22 @@ def checkInputParameter(args: any) -> any:
     '''
 
     if args.rgbDir == None or not os.path.exists(args.rgbDir):
-        raise ValueError('Invalid RGB image directory.')
+        raise ValueError('Invalid RGB image directory "%s".' % (args.rgbDir))
 
     if args.depthDir == None or not os.path.exists(args.depthDir):
-        raise ValueError('Invalid depth image directory.')
+        raise ValueError('Invalid depth image directory "%s".' % (args.depthDir))
 
     if args.maskDir == None or not os.path.exists(args.maskDir):
-        raise ValueError('Invalid mask image directory.')
+        raise ValueError('Invalid mask image directory "%s".' % (args.maskDir))
 
     if args.groundTruthFile == None or not os.path.exists(args.groundTruthFile):
-        raise ValueError('Invalid ground truth file.')
+        raise ValueError('Invalid ground truth file "%s".' % (args.groundTruthFile))
 
     if args.camCalibFile == None or not os.path.exists(args.camCalibFile):
-        raise ValueError('Invalid camera calibration file.')
+        raise ValueError('Invalid camera calibration file "%s".' % (args.camCalibFile))
 
-    if args.outputFile == None or len(args.outputFile) == 0:
-        raise ValueError('Invalid output file.')
+    if args.outputDir == None or len(args.outputDir) == 0:
+        raise ValueError('Invalid output file "%s".' % (args.outputDir))
 
     if args.frameOffset == 0:
         raise ValueError('Invalid frame offset. Must be greater than 0.')
@@ -58,10 +59,9 @@ def checkInputParameter(args: any) -> any:
     if args.upperEdgeDistanceBoundary < args.upperEdgeDistanceBoundary:
         raise ValueError('Upper boundary must be greater than the lower boundary.')
 
-    outputDir = os.path.dirname(args.outputFile)
-    if not os.path.exists(outputDir):
-        os.makedirs(outputDir)
-        logging.info('Created output directory "%s".' % (outputDir))
+    if not os.path.exists(args.outputDir):
+        os.makedirs(args.outputDir)
+        logging.info('Created output directory "%s".' % (args.outputDir))
 
     return args
 
@@ -76,16 +76,21 @@ def parseArgs() -> any:
     parser.add_argument('-m', '--maskDir', type=str, default=None, required=True, help='Mask image directory.')
     parser.add_argument('-c', '--camCalibFile', type=str, default=None, required=True, help='Camera calibration file.')
     parser.add_argument('-g', '--groundTruthFile', type=str, default=None, required=True, help='Associated TUM ground truth file, e.g. groundtruth_associated.txt.')
-    parser.add_argument('-o', '--outputFile', type=str, default=None, required=True, help='Result output file.')
+    parser.add_argument('-o', '--outputDir', type=str, default=None, required=True, help='Result output directory.')
     parser.add_argument('-f', '--frameOffset', type=int, default=1, help='Frame offset. Offset between the reprojected frames.')
     parser.add_argument('-l', '--lowerEdgeDistanceBoundary', type=float, default=1, help='Edges are counted as best below this reprojected edge distance.')
     parser.add_argument('-u', '--upperEdgeDistanceBoundary', type=float, default=5, help='Edges are counted as worse above this reprojected edge distance.')
-
+    parser.add_argument('-p', '--projectionMode', type=int, choices=[EdgeMatcherMode.REPROJECT, EdgeMatcherMode.BACKPROJECT, EdgeMatcherMode.CENTERPROJECT], default=1, help='Set the frame projection mode. 1 is backprojection, 2 is reprojection and 3 is center frame projection. Default is 1.')
     return parser.parse_args()
 
 
 def displayProgress(val: float = None):
-    print('Progress: %.2f %%' % val, '     \r', end='')
+    '''
+    Display progress in a user defined form.
+
+    val Current progress, between 0 and 100 in percent.
+    '''
+    #print('Progress: %.2f %%' % val, '     \r', end='')
 
 
 def main() -> None:
@@ -107,6 +112,9 @@ def main() -> None:
         gtHandler.progress = displayProgress
         gtHandler.load(args.groundTruthFile)
 
+        if len(gtHandler.data()) < args.frameOffset:
+            raise ValueError('Number of input data is "%s" but must be greater than the frame offset "%d".' % (len(gtHandler.data()), args.frameOffset))
+
         logging.info('Starting edge matching.')
         edgeMatcher = EdgeMatcher(camera)
         edgeMatcher.setFrameOffset(args.frameOffset)
@@ -115,9 +123,9 @@ def main() -> None:
         for a in gtHandler.data():
             logging.info('Loading frame at timestamp %f' % (a.gt.timestamp))
 
-            rgb = cv2.imread(os.path.join(args.rgbDir, a.rgb), cv2.IMREAD_UNCHANGED)
-            depth = cv2.imread(os.path.join(args.depthDir, a.depth), cv2.IMREAD_UNCHANGED)
-            mask = cv2.imread(os.path.join(args.maskDir, a.rgb), cv2.IMREAD_GRAYSCALE)
+            rgb = cv.imread(os.path.join(args.rgbDir, a.rgb), cv.IMREAD_UNCHANGED)
+            depth = cv.imread(os.path.join(args.depthDir, a.depth), cv.IMREAD_UNCHANGED)
+            mask = cv.imread(os.path.join(args.maskDir, a.rgb), cv.IMREAD_GRAYSCALE)
 
             frame = Frame()
             frame.rgb = rgb
@@ -125,8 +133,14 @@ def main() -> None:
             frame.mask = mask
             frame.setT(a.gt.q, a.gt.t)
 
-            meaningfulEdges = edgeMatcher.reprojectEdgesFromConsecutiveFrameSet(frame)
+            meaningfulEdges = edgeMatcher.reprojectEdgesFromConsecutiveFrameSet(frame, args.projectionMode)
 
+            if meaningfulEdges is None:
+                continue
+
+            cv.imwrite(os.path.join(args.outputDir, a.rgb), meaningfulEdges)
+            logging.info('Saving "%s"' % (os.path.join(args.outputDir, a.rgb)))
+            
         elapsedTime = time.time() - startTime
         print('\n')
         logging.info('Finished in %.4f sec' % (elapsedTime))
