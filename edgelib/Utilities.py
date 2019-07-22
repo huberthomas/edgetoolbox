@@ -1,5 +1,5 @@
 import os
-import cv2
+import cv2 as cv
 import math
 import glob
 import fnmatch
@@ -56,7 +56,7 @@ def rotateImage(img: any = None, angle: float = None, removeCropBorders: bool = 
     # getRotationMatrix2D needs coordinates in reverse order (width, height) compared to shape
     imageCenter = (width/2, height/2)
 
-    M = cv2.getRotationMatrix2D(imageCenter, angle, 1.0)
+    M = cv.getRotationMatrix2D(imageCenter, angle, 1.0)
 
     # rotation calculates the cos and sin, taking absolutes of those.
     absCos = abs(M[0, 0])
@@ -71,7 +71,7 @@ def rotateImage(img: any = None, angle: float = None, removeCropBorders: bool = 
     M[1, 2] += boundH/2 - imageCenter[1]
 
     # rotate image with the new bounds and translated rotation matrix
-    rotatedImg = cv2.warpAffine(img, M, (boundW, boundH))
+    rotatedImg = cv.warpAffine(img, M, (boundW, boundH))
 
     # remove black borders
     if removeCropBorders:
@@ -114,18 +114,18 @@ def transformAndSaveImage(outputFilePath: str = None,
         raise ValueError('Output file path must be set.')
 
     if flipHorizontal and flipVertical:
-        img = cv2.flip(img, -1)
+        img = cv.flip(img, -1)
     elif flipHorizontal:
-        img = cv2.flip(img, 0)
+        img = cv.flip(img, 0)
     elif flipVertical:
-        img = cv2.flip(img, 1)
+        img = cv.flip(img, 1)
 
     scale = abs(scale)
-    img = cv2.resize(img, None, fx=scale, fy=scale)
+    img = cv.resize(img, None, fx=scale, fy=scale)
 
     rotatedImg = rotateImage(img, angle, cropBlackBorder)
 
-    cv2.imwrite(outputFilePath, rotatedImg)
+    cv.imwrite(outputFilePath, rotatedImg)
 
 
 def getCropCoordinates(angle: float = None, width: int = None, height: int = None) -> tuple:

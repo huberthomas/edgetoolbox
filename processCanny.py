@@ -2,7 +2,7 @@ import logging
 import argparse
 import sys
 import os
-import cv2
+import cv2 as cv
 import time
 import multiprocessing as mp
 from edgelib import Utilities
@@ -93,9 +93,9 @@ def processAndSaveCanny(imgFilePath: str = None,
     blurKernelSize Kernel size for the Sobel operator.
     '''
     try:
-        img = cv2.imread(imgFilePath)
+        img = cv.imread(imgFilePath)
         edge = Canny.canny(img, threshold1, threshold2, kernelSize, highAccuracy, blurKernelSize)
-        cv2.imwrite(outFilePath, edge)
+        cv.imwrite(outFilePath, edge)
     except Exception as e:
         raise e
 

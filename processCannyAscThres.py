@@ -2,7 +2,7 @@ import logging
 import argparse
 import sys
 import os
-import cv2
+import cv2 as cv
 import time
 import multiprocessing as mp
 from edgelib import Utilities
@@ -107,9 +107,9 @@ def processAndSaveCanny(imgFilePath: str = None,
     validEdgesThreshold Threshold that defines valid edges. Must be between 0 and 1.
     '''
     try:
-        img = cv2.imread(imgFilePath)
+        img = cv.imread(imgFilePath)
         edge = Canny.cannyAscendingThreshold(img, threshold1, threshold2, kernelSize, highAccuracy, blurKernelSize, stepRange, validEdgesThreshold)
-        cv2.imwrite(outFilePath, edge)
+        cv.imwrite(outFilePath, edge)
     except Exception as e:
         raise e
 

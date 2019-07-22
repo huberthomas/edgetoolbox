@@ -1,5 +1,5 @@
 import os
-import cv2
+import cv2 as cv
 import numpy as np
 
 
@@ -91,13 +91,13 @@ class Camera:
             raise ValueError('Invalid camera file path "%s".' % (filePath))
 
         try:
-            fs = cv2.FileStorage(filePath, cv2.FILE_STORAGE_READ)
+            fs = cv.FileStorage(filePath, cv.FILE_STORAGE_READ)
             # camera matrix
             self.setCameraMatrix(fs.getNode(self.__tagCameraMatrix).mat())
             # distortion coefficients
             dcNode = fs.getNode(self.__tagDistortionCoefficients)
             # can be a vector or an OpenCV matrix
-            if dcNode.type() == cv2.FileNode_MAP:
+            if dcNode.type() == cv.FileNode_MAP:
                 self.setDistortionCoefficients(dcNode.mat())
             else:
                 distortionCoefficients = []
@@ -121,7 +121,7 @@ class Camera:
         if filePath is None or len(filePath) == 0:
             raise ValueError('Invalid file path.')
         try:
-            fs = cv2.FileStorage(filePath, cv2.FILE_STORAGE_WRITE)
+            fs = cv.FileStorage(filePath, cv.FILE_STORAGE_WRITE)
             fs.write(self.__tagCameraMatrix, self.cameraMatrix)
             fs.write(self.__tagDistortionCoefficients, self.distortionCoefficients)
             fs.write(self.__tagDepthScaleFactor, self.depthScaleFactor)

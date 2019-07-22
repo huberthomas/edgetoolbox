@@ -1,6 +1,6 @@
 import os
 import multiprocessing as mp
-import cv2
+import cv2 as cv
 
 from functools import partial
 from typing import List
@@ -90,7 +90,7 @@ class DataAugmentation:
             for imageFileName in imageFileNames:
                 imagePath = os.path.join(self.__inputDir, imageFileName)
 
-                img = cv2.imread(imagePath)
+                img = cv.imread(imagePath)
 
                 param = []
                 cropBlackRotationBorder = self.__cropBlackRotationBorder

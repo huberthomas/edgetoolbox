@@ -2,7 +2,7 @@ import logging
 import argparse
 import sys
 import os
-import cv2
+import cv2 as cv
 import time
 import multiprocessing as mp
 from edgelib import Utilities
@@ -55,7 +55,7 @@ def parseArgs() -> any:
     parser.add_argument('-i', '--inputDir', type=str, default=None, required=True, help='Input image directory.')
     parser.add_argument('-o', '--outputDir', type=str, default=None, required=True, help='Image output directory.')
     parser.add_argument('-r', '--inpaintRadius', type=int, default=5, help='Set the inpainting radius. Default 5.')
-    parser.add_argument('-m', '--inpaintMethod', type=int, choices=[cv2.INPAINT_NS, cv2.INPAINT_TELEA], default=1, help='Set the inpainting method. 0 is NS, 1 is TELEA. Default is 1.')
+    parser.add_argument('-m', '--inpaintMethod', type=int, choices=[cv.INPAINT_NS, cv.INPAINT_TELEA], default=1, help='Set the inpainting method. 0 is NS, 1 is TELEA. Default is 1.')
     parser.add_argument('-t', '--threads', type=int, default=mp.cpu_count(), help='Number of spawned threads to process data. Default is maximum number.')
 
     return parser.parse_args()
@@ -63,7 +63,7 @@ def parseArgs() -> any:
 def processAndSaveReconstructedDepthImg(imgFilePath: str = None, 
                                         outFilePath: str = None, 
                                         inpaintRadius: int = 5, 
-                                        inpaintMethod: int = cv2.INPAINT_TELEA) -> None:
+                                        inpaintMethod: int = cv.INPAINT_TELEA) -> None:
     '''
     Process input file by reconstructing invalid/undefined depth values.
 
@@ -76,7 +76,7 @@ def processAndSaveReconstructedDepthImg(imgFilePath: str = None,
     inpaintMethod Inpaint method of OpenCV inpainting method.    
     '''
     try:
-        porousDepthImg = cv2.imread(imgFilePath, cv2.IMREAD_UNCHANGED)
+        porousDepthImg = cv.imread(imgFilePath, cv.IMREAD_UNCHANGED)
         restoredImg = ImageProcessing.reconstructDepthImg(porousDepthImg, inpaintRadius, inpaintMethod)
 
         # fig = plt.figure(figsize=(1, 2))
@@ -86,7 +86,7 @@ def processAndSaveReconstructedDepthImg(imgFilePath: str = None,
         # plt.imshow(restoredImg)
         # plt.show()
 
-        cv2.imwrite(outFilePath, restoredImg)
+        cv.imwrite(outFilePath, restoredImg)
     except Exception as e:
         raise e
 
