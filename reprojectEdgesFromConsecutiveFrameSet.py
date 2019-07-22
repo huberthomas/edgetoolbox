@@ -120,8 +120,12 @@ def main() -> None:
         edgeMatcher.setFrameOffset(args.frameOffset)
         edgeMatcher.setEdgeDistanceBoundaries(args.lowerEdgeDistanceBoundary, args.upperEdgeDistanceBoundary)
 
+        frameFileNames = []
         for a in gtHandler.data():
-            logging.info('Loading frame at timestamp %f' % (a.gt.timestamp))
+            logging.info('Loading frame at timestamp %f (RGB: %s)' % (a.gt.timestamp, a.rgb))
+
+            # used for determining the correct filename
+            frameFileNames.append(a.rgb)
 
             rgb = cv.imread(os.path.join(args.rgbDir, a.rgb), cv.IMREAD_UNCHANGED)
             depth = cv.imread(os.path.join(args.depthDir, a.depth), cv.IMREAD_UNCHANGED)
@@ -138,8 +142,20 @@ def main() -> None:
             if meaningfulEdges is None:
                 continue
 
-            cv.imwrite(os.path.join(args.outputDir, a.rgb), meaningfulEdges)
-            logging.info('Saving "%s"' % (os.path.join(args.outputDir, a.rgb)))
+            # determine correct filename
+            if args.projectionMode == EdgeMatcherMode.REPROJECT:
+                frameFileName = frameFileNames[len(frameFileNames) - 1]
+            elif args.projectionMode == EdgeMatcherMode.BACKPROJECT:
+                frameFileName = frameFileNames[0]
+            elif args.projectionMode == EdgeMatcherMode.CENTERPROJECT:
+                frameFileName = frameFileNames[args.frameOffset]
+            else:
+                raise ValueError('Unknown projection mode "%d".' % (args.projectionMode))
+
+            # save result
+            cv.imwrite(os.path.join(args.outputDir, frameFileName), meaningfulEdges)
+            logging.info('Saving "%s"' % (os.path.join(args.outputDir, frameFileName)))
+            frameFileNames.pop(0)
             
         elapsedTime = time.time() - startTime
         print('\n')
