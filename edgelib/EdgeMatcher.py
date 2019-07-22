@@ -9,6 +9,7 @@ from typing import List
 import logging
 from enum import IntEnum
 
+
 class EdgeMatcherMode(IntEnum):
     # back to front projection
     REPROJECT = 1
@@ -36,7 +37,6 @@ class EdgeMatcher:
         self.__edgeDistanceUpperBoundary = 10
         self.__frameOffset = 1
         self.__camera = camera
-
 
     def setEdgeDistanceBoundaries(self, lowerBoundary: float = None, upperBoundary: float = None) -> None:
         '''
@@ -100,8 +100,8 @@ class EdgeMatcher:
 
         if mode == EdgeMatcherMode.CENTERPROJECT:
             maxFrameOffset = 2 * self.__frameOffset
-        
-        if len(self.__frameSet) < (maxFrameOffset + 1):
+
+        if len(self.__frameSet) <= maxFrameOffset:
             return None
 
         if mode == EdgeMatcherMode.REPROJECT:
@@ -110,9 +110,9 @@ class EdgeMatcher:
             destFrame = self.__frameSet[0]
         elif mode == EdgeMatcherMode.CENTERPROJECT:
             destFrame = self.__frameSet[self.__frameOffset]
+            maxFrameOffset = maxFrameOffset + 1
         else:
             raise ValueError('Unsupported projection mode.')
-
 
         h, w = destFrame.mask.shape
         meaningfulEdges = np.zeros((h, w, 4))
@@ -123,7 +123,7 @@ class EdgeMatcher:
                 # avoid destination frame projection
                 if i == self.__frameOffset:
                     continue
-            
+
             start = time.time()
 
             if mode == EdgeMatcherMode.REPROJECT or (mode == EdgeMatcherMode.CENTERPROJECT and i < self.__frameOffset):
