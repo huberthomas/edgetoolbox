@@ -11,6 +11,7 @@ from edgelib import ImageProcessing
 import matplotlib
 import matplotlib.pyplot as plt
 
+
 def checkInputParameter(args: any) -> any:
     '''
     Check the input parameter from argparse.
@@ -60,9 +61,10 @@ def parseArgs() -> any:
 
     return parser.parse_args()
 
-def processAndSaveReconstructedDepthImg(imgFilePath: str = None, 
-                                        outFilePath: str = None, 
-                                        inpaintRadius: int = 5, 
+
+def processAndSaveReconstructedDepthImg(imgFilePath: str = None,
+                                        outFilePath: str = None,
+                                        inpaintRadius: int = 5,
                                         inpaintMethod: int = cv.INPAINT_TELEA) -> None:
     '''
     Process input file by reconstructing invalid/undefined depth values.
@@ -125,7 +127,7 @@ def main() -> None:
 
         pool.terminate()
 
-        # write configuration to output directory        
+        # write configuration to output directory
         f = open(os.path.join(args.outputDir, 'settings.txt'), 'w')
         f.write(Utilities.argsToStr(args))
         f.write('\nImages\t%d' % (len(imgFileNames)))
@@ -137,6 +139,7 @@ def main() -> None:
     except Exception as e:
         logging.error(e)
         sys.exit(-1)
+
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s:\t%(message)s', level=logging.DEBUG)

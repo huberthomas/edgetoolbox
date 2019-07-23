@@ -11,6 +11,9 @@ from enum import IntEnum
 
 
 class EdgeMatcherMode(IntEnum):
+    '''
+    These modes are used to switch between the re-/backprojection of the edges to a defined frame.
+    '''
     # back to front projection
     REPROJECT = 1
     # front to back projetion
@@ -126,12 +129,8 @@ class EdgeMatcher:
 
             start = time.time()
 
-            if mode == EdgeMatcherMode.REPROJECT or (mode == EdgeMatcherMode.CENTERPROJECT and i < self.__frameOffset):
-                projectedEdges = self.projectEdges(self.__frameSet[i], destFrame, distTransMat)
-                logging.info('Reprojected %d in %f sec.' % (i, time.time() - start))
-            elif mode == EdgeMatcherMode.BACKPROJECT or (mode == EdgeMatcherMode.CENTERPROJECT and i > self.__frameOffset):
-                projectedEdges = self.projectEdges(self.__frameSet[maxFrameOffset - i - 1], destFrame, distTransMat)
-                logging.info('Backprojected %d in %f sec.' % (i, time.time() - start))
+            projectedEdges = self.projectEdges(self.__frameSet[i], destFrame, distTransMat)
+            logging.info('Projected %d in %f sec.' % (i, time.time() - start))
 
             # accumulate values
             meaningfulEdges = cv.add(meaningfulEdges, projectedEdges)

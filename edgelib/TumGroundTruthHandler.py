@@ -105,7 +105,7 @@ class TumGroundTruthHandler:
 
         try:
             f = open(filePath, 'r')
-            
+
             counter = -1
             total = len(f.readlines())
 
@@ -283,9 +283,9 @@ class TumGroundTruthHandler:
                                       dirAssociations: List[List[str]] = None) -> dict:
         '''
         Associates ground truth entries to the lowest time difference of the files.
-        
+
         gtList Ground truth list.
-        
+
         dirAssociations Directory associations, QPair is RGB and Depth.
 
         Returns dictionary containing timestamp (key) and association (value) sorted by timestamp.

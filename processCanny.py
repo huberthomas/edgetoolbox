@@ -114,7 +114,7 @@ def main() -> None:
         param = []
 
         logging.info('Processing %d image(s).' % (len(imgFileNames)))
-        
+
         for imgFileName in imgFileNames:
             imgFilePath = os.path.join(args.inputDir, imgFileName)
             fileName = imgFileName.split('.')
@@ -128,7 +128,7 @@ def main() -> None:
                           args.threshold2,
                           args.kernelSize,
                           args.highAccuracy,
-                          args.blurKernelSize))            
+                          args.blurKernelSize))
 
         pool = mp.Pool(processes=args.threads)
 
@@ -144,12 +144,13 @@ def main() -> None:
         f.write('\nImages\t%d' % (len(imgFileNames)))
         f.write('\nProcessing time\t%.4f sec' % (elapsedTime))
         f.close()
-        
+
         logging.info('Finished in %.4f sec' % (elapsedTime))
         sys.exit(0)
     except Exception as e:
         logging.error(e)
         sys.exit(-1)
+
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s:\t%(message)s', level=logging.DEBUG)

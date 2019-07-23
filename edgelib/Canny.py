@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 def canny(img: np.ndarray = None,
           threshold1: int = 100,
           threshold2: int = 150,
@@ -50,14 +51,15 @@ def canny(img: np.ndarray = None,
 
     return cv2.Canny(blurredImg, threshold1, threshold2, None, kernelSize, highAccuracy)
 
+
 def cannyAscendingThreshold(img: np.ndarray = None,
-          threshold1: int = 0,
-          threshold2: int = 0,
-          kernelSize: int = 3,
-          highAccuracy: bool = True,
-          blurKernelSize: int = 3,
-          stepRange: int = 50,
-          validEdgesThreshold: float = 0.5) -> np.ndarray:
+                            threshold1: int = 0,
+                            threshold2: int = 0,
+                            kernelSize: int = 3,
+                            highAccuracy: bool = True,
+                            blurKernelSize: int = 3,
+                            stepRange: int = 50,
+                            validEdgesThreshold: float = 0.5) -> np.ndarray:
     '''
     Process Canny edge detection on a defined input image. The second threshold will be
     increased by the step range. The result will be accumulated until no edge is found. 
@@ -114,7 +116,6 @@ def cannyAscendingThreshold(img: np.ndarray = None,
     edgeImg = np.zeros((h, w), np.float64)
     resImg = np.zeros((h, w), np.float64)
 
-
     i = 0
     while(True):
         ascendingThreshold2 = threshold2 + i*stepRange
@@ -132,4 +133,3 @@ def cannyAscendingThreshold(img: np.ndarray = None,
     cv2.threshold(resImg, validEdgesThreshold, 255, cv2.THRESH_BINARY, edgeImg)
 
     return edgeImg
-

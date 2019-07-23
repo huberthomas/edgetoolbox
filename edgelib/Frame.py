@@ -1,9 +1,10 @@
+import sophus
 import sys
 import numpy as np
 from typing import List
 
 sys.path.insert(0, 'dependencies/sophus/py/')
-import sophus
+
 
 class Frame:
     '''
@@ -83,4 +84,3 @@ class Frame:
         '''
         f = Frame()
         f.setT([-0.3707, 0.8752, 0.2850, -0.1243], (1.2742, 0.8795, 1.5136))
-

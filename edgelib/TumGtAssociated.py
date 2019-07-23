@@ -2,6 +2,7 @@ import numpy as np
 
 from edgelib.TumGroundTruth import TumGroundTruth
 
+
 class TumGtAssociated:
     '''
     The GroundTruth struct contains all the information from

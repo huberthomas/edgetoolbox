@@ -7,8 +7,6 @@ from typing import List
 
 from edgelib import Utilities
 
-mp.set_start_method('spawn', True)
-
 
 class DataAugmentation:
     '''
@@ -138,7 +136,7 @@ class DataAugmentation:
         except Exception as e:
             dataFile.close()
             raise e
-            
+
         dataFile.close()
 
     def enableFlip(self, enableHorizontal: bool = True, enableVertical: bool = True) -> None:

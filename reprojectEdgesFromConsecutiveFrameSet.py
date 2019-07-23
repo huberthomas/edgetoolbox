@@ -11,6 +11,7 @@ from edgelib.Frame import Frame
 from edgelib import Utilities
 import matplotlib.pyplot as plt
 
+
 def checkInputParameter(args: any) -> any:
     '''
     Check the input parameter from argparse.
@@ -80,7 +81,8 @@ def parseArgs() -> any:
     parser.add_argument('-f', '--frameOffset', type=int, default=1, help='Frame offset. Offset between the reprojected frames.')
     parser.add_argument('-l', '--lowerEdgeDistanceBoundary', type=float, default=1, help='Edges are counted as best below this reprojected edge distance.')
     parser.add_argument('-u', '--upperEdgeDistanceBoundary', type=float, default=5, help='Edges are counted as worse above this reprojected edge distance.')
-    parser.add_argument('-p', '--projectionMode', type=int, choices=[EdgeMatcherMode.REPROJECT, EdgeMatcherMode.BACKPROJECT, EdgeMatcherMode.CENTERPROJECT], default=1, help='Set the frame projection mode. 1 is backprojection, 2 is reprojection and 3 is center frame projection. Default is 1.')
+    parser.add_argument('-p', '--projectionMode', type=int, choices=[EdgeMatcherMode.REPROJECT, EdgeMatcherMode.BACKPROJECT, EdgeMatcherMode.CENTERPROJECT],
+                        default=1, help='Set the frame projection mode. 1 is backprojection, 2 is reprojection and 3 is center frame projection. Default is 1.')
     return parser.parse_args()
 
 
@@ -95,12 +97,17 @@ def displayProgress(val: float = None):
 
 def main() -> None:
     '''
-    Main function. Parse, check input parameter and process data augmentation.
+    Main function. Parse, check input parameter and process data.
     '''
     try:
         args = parseArgs()
         args = checkInputParameter(args)
         print(Utilities.argsToStr(args))
+
+        # write configuration to output directory
+        f = open(os.path.join(args.outputDir, 'settings.txt'), 'w')
+        f.write(Utilities.argsToStr(args))
+        f.close()
 
         startTime = time.time()
         logging.info('Loading data from camera calibration file.')
@@ -124,7 +131,7 @@ def main() -> None:
         for a in gtHandler.data():
             logging.info('Loading frame at timestamp %f (RGB: %s)' % (a.gt.timestamp, a.rgb))
 
-            # used for determining the correct filename
+            # used for determining the correct filename, depending on the projection mode
             frameFileNames.append(a.rgb)
 
             rgb = cv.imread(os.path.join(args.rgbDir, a.rgb), cv.IMREAD_UNCHANGED)
@@ -156,7 +163,7 @@ def main() -> None:
             cv.imwrite(os.path.join(args.outputDir, frameFileName), meaningfulEdges)
             logging.info('Saving "%s"' % (os.path.join(args.outputDir, frameFileName)))
             frameFileNames.pop(0)
-            
+
         elapsedTime = time.time() - startTime
         print('\n')
         logging.info('Finished in %.4f sec' % (elapsedTime))

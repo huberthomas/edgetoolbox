@@ -6,6 +6,7 @@ import sys
 from edgelib.TumGroundTruthHandler import TumGroundTruthHandler
 from edgelib import Utilities
 
+
 def checkInputParameter(args: any) -> any:
     '''
     Check the input parameter from argparse.
@@ -43,15 +44,17 @@ def parseArgs() -> any:
     '''
     parser = argparse.ArgumentParser(description='Reconstruct undefined areas in a depth image.')
     parser.add_argument('-g', '--groundTruthFile', type=str, default=None, required=True, help='TUM ground truth file, e.g. groundtruth.txt.')
-    parser.add_argument('-r', '--rgbDir', type=str, default=None, required=True, help='RGB image directory.')    
+    parser.add_argument('-r', '--rgbDir', type=str, default=None, required=True, help='RGB image directory.')
     parser.add_argument('-d', '--depthDir', type=str, default=None, required=True, help='Depth image directory.')
-    parser.add_argument('-o', '--outputFile', type=str, default=None, required=True, help='Result associated ground truth file.')    
-    parser.add_argument('-m', '--maxDifference', type=float, default=0.2, help='Maximum difference between time entries for synchronization of files.')    
+    parser.add_argument('-o', '--outputFile', type=str, default=None, required=True, help='Result associated ground truth file.')
+    parser.add_argument('-m', '--maxDifference', type=float, default=0.2, help='Maximum difference between time entries for synchronization of files.')
 
     return parser.parse_args()
 
+
 def displayProgress(val: float = None):
     print('Progress: %.2f %%' % val, '     \r', end='')
+
 
 def main() -> None:
     '''
@@ -74,6 +77,7 @@ def main() -> None:
     except Exception as e:
         logging.error(e)
         sys.exit(-1)
+
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s:\t%(message)s', level=logging.DEBUG)

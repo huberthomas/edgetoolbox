@@ -115,6 +115,9 @@ def main() -> None:
 
 
 if __name__ == '__main__':
+    # needed to avoid errors during multithread pool creation
+    # https://docs.python.org/3/library/multiprocessing.html#multiprocessing.set_start_method
+    mp.set_start_method('spawn', True)
     logging.basicConfig(format='%(asctime)s %(levelname)s:\t%(message)s', level=logging.DEBUG)
     print('#################')
     print('Data Augmentation')
