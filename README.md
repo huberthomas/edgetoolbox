@@ -1,4 +1,4 @@
 # edgetoolbox
 
 ## Dependencies
-conda install sympy opencv numpy matplotlib
+conda install sympy cv2 opencv numpy matplotlib
