@@ -134,7 +134,7 @@ def createHeatmap(img: np.ndarray = None, colormap: int = cv.COLORMAP_HOT) -> np
     if img is None:
         raise ValueError('Invalid input image.')
 
-    h, w, _ = img.shape
-    heatmap = np.zeros((h, w))
+    h, w = img.shape[:2]
+    heatmap = np.zeros((h, w), np.uint8)
     cv.normalize(img, heatmap, 0, 255, cv.NORM_MINMAX)
-    cv.applyColorMap(heatmap, heatmap, colormap)
+    return cv.applyColorMap(heatmap, colormap)
