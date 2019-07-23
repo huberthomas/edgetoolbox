@@ -86,15 +86,6 @@ def parseArgs() -> any:
     return parser.parse_args()
 
 
-def displayProgress(val: float = None):
-    '''
-    Display progress in a user defined form.
-
-    val Current progress, between 0 and 100 in percent.
-    '''
-    #print('Progress: %.2f %%' % val, '     \r', end='')
-
-
 def main() -> None:
     '''
     Main function. Parse, check input parameter and process data.
@@ -116,7 +107,6 @@ def main() -> None:
 
         logging.info('Loading data from associated ground truth file.')
         gtHandler = TumGroundTruthHandler()
-        gtHandler.progress = displayProgress
         gtHandler.load(args.groundTruthFile)
 
         if len(gtHandler.data()) < args.frameOffset:
