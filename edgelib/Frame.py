@@ -1,9 +1,7 @@
-import sophus
-import sys
-import numpy as np
 from typing import List
-
-sys.path.insert(0, 'dependencies/sophus/py/')
+import numpy as np
+import sys
+import sophus
 
 
 class Frame:
