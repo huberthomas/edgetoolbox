@@ -123,7 +123,7 @@ def getInterpolatedElement(mat: np.ndarray = None, x: float = None, y: float = N
     return res
 
 
-def createHeatmap(img: np.ndarray = None, colormap: int = cv.COLORMAP_HOT) -> np.ndarray:
+def createHeatmap(img: np.ndarray = None, colormap: int = cv.COLORMAP_JET) -> np.ndarray:
     '''
     Create heatmap of an image with a defined color mapping.
 
@@ -136,5 +136,6 @@ def createHeatmap(img: np.ndarray = None, colormap: int = cv.COLORMAP_HOT) -> np
 
     h, w = img.shape[:2]
     heatmap = np.zeros((h, w), np.uint8)
-    cv.normalize(img, heatmap, 0, 255, cv.NORM_MINMAX)
+    cv.normalize(img, heatmap, 0, 255, cv.NORM_MINMAX, cv.CV_8UC1)
+    
     return cv.applyColorMap(heatmap, colormap)
