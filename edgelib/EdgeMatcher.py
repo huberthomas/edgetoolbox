@@ -4,6 +4,7 @@ import time
 import numpy as np
 import cv2 as cv
 from edgelib import ImageProcessing
+from edgelib import Canny
 import matplotlib.pyplot as plt
 from typing import List
 import logging
@@ -83,15 +84,93 @@ class EdgeMatcher:
 
         self.__frameOffset = frameOffset
 
+    def reprojectEdgesByAscendingCannyThreshold(self,
+                                                frame: Frame = None,
+                                                stepRange: int = 50,
+                                                validEdgesThreshold: float = 0.5,
+                                                cannyThres1: int = 0,
+                                                cannyThres2: int = 0,
+                                                cannyKernelSize: int = 3,
+                                                cannyHighAccuracy: bool = True,
+                                                cannyBlurKernelSize: int = 3) -> np.ndarray:
+        '''
+        Reproject edges of varying Canny detected edges. The threshold is dynamically set.
+
+        stepRange Increasing step range for the second threshold.
+
+        validEdgesThreshold Threshold that defines valid edges. Must be between 0 and 1.
+
+        cannyThreshold1 First threshold for the hysteresis procedure.
+
+        cannyThreshold2 Second threshold for the hysteresis procedure.
+
+        cannyKernelSize Kernel size for the sobel operator.
+
+        cannyHighAccuracy If true, L2 gradient will be used for more accuracy.
+
+        cannyBlurKernelSize Kernel size for the Sobel operator.
+
+        Returns meaningful edges.
+        '''
+        if frame is None or not frame.isValid():
+            raise ValueError('Invalid frame.')
+
+        # fill frame set
+        self.__frameSet.append(frame)
+
+        if len(self.__frameSet) <= self.__frameOffset:
+            return None
+
+        h, w = frame.mask.shape
+        meaningfulEdges = np.zeros((h, w, 4))
+        distTransMat = cv.distanceTransform(255 - frame.mask, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+
+        try:
+            for i in range(0, self.__frameOffset):
+                start = time.time()
+                mask = Canny.cannyAscendingThreshold(self.__frameSet[i].rgb,
+                                            cannyThres1,
+                                            cannyThres2,
+                                            cannyKernelSize,
+                                            cannyHighAccuracy,
+                                            cannyBlurKernelSize,
+                                            stepRange,
+                                            validEdgesThreshold)
+
+                tmpFrame = self.__frameSet[i]
+                tmpFrame.mask = mask
+
+                projectedEdges = self.projectEdges(tmpFrame, frame, distTransMat)
+                logging.info('Projected %d in %f sec.' % (i, time.time() - start))
+
+                # accumulate values
+                meaningfulEdges = cv.add(meaningfulEdges, projectedEdges)
+
+
+            best, good, worse, _ = cv.split(meaningfulEdges)
+            meaningfulEdges = cv.add(best, good)
+            # remove values less the n times seen
+            minNumOfFramesDetected = self.__frameOffset * 0.25
+            _, meaningfulEdges = cv.threshold(meaningfulEdges, minNumOfFramesDetected, 255, cv.THRESH_BINARY)
+
+        except Exception as e:
+            raise e
+
+        self.__frameSet.pop(0)
+
+        return meaningfulEdges
+
     def reprojectEdgesFromConsecutiveFrameSet(self, frame: Frame = None, mode: EdgeMatcherMode = EdgeMatcherMode.REPROJECT) -> np.ndarray:
         '''
         Reproject edges based on the frame offset.
 
         frame Current frame information.
 
-        Returns meaningful edges. Channel 1: below or equal lower boundary, 
+        Returns meaningful edges. Channel 1: below or equal lower boundary,
         channel 2: between lower and upper boundary, channel 3: above upper boundary and
         channel 4 distance between mask and reprojected point value.
+
+        Returns meaningful edges.
         '''
         if not frame.isValid():
             raise ValueError('Invalid frame.')
@@ -168,7 +247,7 @@ class EdgeMatcher:
 
         distTransMat Distance matrix that contains the distance transform values.
 
-        Returns matrix that contains the result of the reprojection. 
+        Returns matrix that contains the result of the reprojection.
         1 channel: best with distance <= edgeDistanceLowerBoundary
         2 channel: good with edgeDistanceLowerBoundary < distance <= edgeDistanceUpperBoundary
         3 channel: worse with distance > edgeDistanceUpperBoundary
