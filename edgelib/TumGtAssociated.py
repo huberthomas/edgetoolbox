@@ -1,6 +1,5 @@
 import numpy as np
-
-from edgelib.TumGroundTruth import TumGroundTruth
+from .TumGroundTruth import TumGroundTruth
 
 
 class TumGtAssociated:

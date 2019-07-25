@@ -40,7 +40,7 @@ def canny(img: np.ndarray = None,
     if blurKernelSize % 2 == 0 or blurKernelSize < 3:
         raise ValueError('Wrong blur kernel size. Allowed are 3, 5, 7, ...')
 
-    c = img.shape[2]
+    c = img.ndim
 
     if c == 3:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -105,8 +105,9 @@ def cannyAscendingThreshold(img: np.ndarray = None,
     if validEdgesThreshold < 0 or validEdgesThreshold > 1:
         raise ValueError('Invalid threshold. Must be between 0 and less or equal 1.')
 
-    h, w, c = img.shape
-
+    h, w = img.shape[:2]
+    c = img.ndim
+    
     if c == 3:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     elif c == 4:

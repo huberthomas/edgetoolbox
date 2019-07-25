@@ -1,10 +1,8 @@
 import os
 import multiprocessing as mp
 import cv2 as cv
-
 from functools import partial
 from typing import List
-
 from edgelib import Utilities
 
 

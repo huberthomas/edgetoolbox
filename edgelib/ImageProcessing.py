@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import List
-from edgelib.Camera import Camera
+from .Camera import Camera
 
 
 def reconstructDepthImg(porousDepthImg: np.ndarray = None,
@@ -133,8 +133,14 @@ def createHeatmap(img: np.ndarray = None, colormap: int = cv.COLORMAP_JET) -> np
     '''
     if img is None:
         raise ValueError('Invalid input image.')
-
+      
     h, w = img.shape[:2]
+
+    if img.ndim == 3:
+        img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    elif img.ndim == 4:
+        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
+
     heatmap = np.zeros((h, w), np.uint8)
     cv.normalize(img, heatmap, 0, 255, cv.NORM_MINMAX, cv.CV_8UC1)
     

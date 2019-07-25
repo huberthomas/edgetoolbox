@@ -1,6 +1,7 @@
 from typing import List
 import numpy as np
 import sys
+sys.path.insert(0, 'dependencies/sophus/py/')
 import sophus
 
 
