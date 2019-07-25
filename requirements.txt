@@ -1,0 +1,4 @@
+sympy
+opencv
+numpy
+matplotlib
