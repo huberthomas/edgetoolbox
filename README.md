@@ -10,7 +10,16 @@ For installation I would recommend using [Conda](https://docs.conda.io/projects/
 
 ### Dependencies
 
-    conda install sympy cv2 opencv numpy matplotlib
+See the requirements.txt file for more information.
+
+### Installation
+
+Sample: 
+
+    conda create -n yourenv python=3
+    conda activate yourenv
+    conda install pip
+    pip install -r requirements.txt
 
 ## Datasets
 
@@ -25,3 +34,5 @@ For installation I would recommend using [Conda](https://docs.conda.io/projects/
 [Multi-Cue](http://serre-lab.clps.brown.edu/resource/multicue/)
 
 [Pascal Voc 2012](https://pjreddie.com/projects/pascal-voc-dataset-mirror/)
+
+[SUN RGB-D](http://rgbd.cs.princeton.edu/)
