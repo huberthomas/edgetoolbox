@@ -133,8 +133,8 @@ def main() -> None:
             frame.depth = depth
             frame.mask = mask
             frame.setT(a.gt.q, a.gt.t)
-
-            meaningfulEdges = edgeMatcher.reprojectEdgesFromConsecutiveFrameSet(frame, args.projectionMode)
+            
+            meaningfulEdges = edgeMatcher.reprojectEdgesToConsecutiveFrameSet(frame, args.projectionMode, args.outputDir)
 
             if meaningfulEdges is None:
                 continue
