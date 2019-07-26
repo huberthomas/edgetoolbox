@@ -34,6 +34,64 @@ class Frame:
 
         return out
 
+    def R(self) -> np.ndarray:
+        '''
+        Rotation matrix.
+
+        Returns the 3x3 rotation matrix.
+        '''
+        return self.__getR(self.T)
+
+    def invT_R(self) -> np.ndarray:
+        '''
+        Inverse rotation matrix.
+
+        Returns the 3x3 inverse rotation matrix.
+        '''
+        return self.__getR(self.__invT)
+
+    def t(self) -> np.ndarray:
+        '''
+        Get the translation vector.
+
+        Returns the 3x1 translation vector.
+        '''
+        return self.__gett(self.T)
+
+    def invT_t(self) -> np.ndarray:
+        '''
+        Get the inverse translation vector.
+
+        Returns the 3x1 translation vector.
+        '''
+        return self.__gett(self.__invT)
+
+    def __getR(self, T: np.ndarray = None) -> np.ndarray:
+        '''
+        Extract the rotation from the transformation matrix.
+
+        T 4x4 Transformation matrix.
+
+        Returns the 3x3 orientation matrix.
+        '''
+        if T is None:
+            raise ValueError('Invalid transformation matrix.')
+
+        return np.array(([T[0][0], T[0][1], T[0][2]],[T[1][0], T[1][1], T[1][2]],[T[2][0], T[2][1], T[2][2]]), np.float64)
+
+    def __gett(self, T: np.ndarray = None) -> np.ndarray:
+        '''
+        Extract the translation from the transformation matrix.
+
+        T 4x4 Transformation matrix.
+
+        Returns the 3x1 tranlation vector.
+        '''
+        if T is None:
+            raise ValueError('Invalid transformation matrix.')
+
+        return np.array(([T[0][3]],[T[1][3]],[T[2][3]]), np.float64)
+
     def invT(self) -> np.ndarray:
         '''
         Get the inverse transformation matrx.
