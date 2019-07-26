@@ -1,14 +1,14 @@
-from typing import List
 import os
 import sys
 import time
-from edgelib.TumGtAssociated import TumGtAssociated
-from edgelib.TumGroundTruth import TumGroundTruth
-from edgelib import Utilities
-from pathlib import Path
 import numpy as np
 import logging
 import collections
+from pathlib import Path
+from typing import List
+from .TumGtAssociated import TumGtAssociated
+from .TumGroundTruth import TumGroundTruth
+from . import Utilities
 
 
 class TumGroundTruthHandler:
@@ -74,16 +74,17 @@ class TumGroundTruthHandler:
 
         try:
             f = open(filePath, 'w')
+            
             f.write('# ground truth trajectory\n')
             f.write('# timestamp tx ty tz qx qy qz qw rgbFileName depthFileName\n')
 
             counter = 0
             total = len(self.__associations)
             for a in self.__associations.values():
-                f.write('%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %s %s\n' % (a.gt.timestamp,
-                                                                             a.gt.t[0], a.gt.t[1], a.gt.t[2],
-                                                                             a.gt.q[1], a.gt.q[2], a.gt.q[3], a.gt.q[0],
-                                                                             a.rgb, a.depth))
+                f.write('%.9f %.13f %.13f %.13f %.13f %.13f %.13f %.13f %s %s\n' % (a.gt.timestamp,
+                                                             a.gt.t[0], a.gt.t[1], a.gt.t[2],
+                                                             a.gt.q[1], a.gt.q[2], a.gt.q[3], a.gt.q[0],
+                                                             a.rgb, a.depth))
                 counter = counter + 1
                 self.progress(counter / total * 100)
 
