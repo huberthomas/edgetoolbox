@@ -242,7 +242,7 @@ class EdgeMatcher:
             plt.subplot(111)
             plt.axis('off')
             plt.imshow(cv.cvtColor(combined, cv.COLOR_BGRA2RGBA))
-            #plt.show()
+            # plt.show()
 
             if not os.path.exists(os.path.join(outputDir, 'plots')):
                 os.makedirs(os.path.join(outputDir, 'plots'))
@@ -338,7 +338,7 @@ class EdgeMatcher:
             plt.subplot(111)
             plt.axis('off')
             plt.imshow(cv.cvtColor(combined, cv.COLOR_BGRA2RGBA))
-            #plt.show()
+            # plt.show()
 
             if not os.path.exists(os.path.join(outputDir, 'plots')):
                 os.makedirs(os.path.join(outputDir, 'plots'))
@@ -398,27 +398,28 @@ class EdgeMatcher:
                     continue
 
                 # project to world coordinate system
-                xyzCoords = ImageProcessing.projectToWorld(self.__camera, np.array([u, v, z], np.float64))
+                X = (u - self.__camera.cx()) * z / self.__camera.fx()
+                Y = (v - self.__camera.cy()) * z / self.__camera.fy()
                 # rotate, translate to other frame
-                p1 = frameFrom.T.item((0, 0)) * xyzCoords[0] + frameFrom.T.item((0, 1)) * xyzCoords[1] + frameFrom.T.item((0, 2)) * z + frameFrom.T.item((0, 3))
-                p2 = frameFrom.T.item((1, 0)) * xyzCoords[0] + frameFrom.T.item((1, 1)) * xyzCoords[1] + frameFrom.T.item((1, 2)) * z + frameFrom.T.item((1, 3))
-                p3 = frameFrom.T.item((2, 0)) * xyzCoords[0] + frameFrom.T.item((2, 1)) * xyzCoords[1] + frameFrom.T.item((2, 2)) * z + frameFrom.T.item((2, 3))
+                p1 = frameFrom.T.item((0, 0)) * X + frameFrom.T.item((0, 1)) * Y + frameFrom.T.item((0, 2)) * z + frameFrom.T.item((0, 3))
+                p2 = frameFrom.T.item((1, 0)) * X + frameFrom.T.item((1, 1)) * Y + frameFrom.T.item((1, 2)) * z + frameFrom.T.item((1, 3))
+                p3 = frameFrom.T.item((2, 0)) * X + frameFrom.T.item((2, 1)) * Y + frameFrom.T.item((2, 2)) * z + frameFrom.T.item((2, 3))
                 q1 = frameTo.invT().item((0, 0)) * p1 + frameTo.invT().item((0, 1)) * p2 + frameTo.invT().item((0, 2)) * p3 + frameTo.invT().item((0, 3))
                 q2 = frameTo.invT().item((1, 0)) * p1 + frameTo.invT().item((1, 1)) * p2 + frameTo.invT().item((1, 2)) * p3 + frameTo.invT().item((1, 3))
                 q3 = frameTo.invT().item((2, 0)) * p1 + frameTo.invT().item((2, 1)) * p2 + frameTo.invT().item((2, 2)) * p3 + frameTo.invT().item((2, 3))
                 # project found 3d point Q back to the image plane
-                uvCoords = ImageProcessing.projectToImage(self.__camera, np.array((q1,q2,q3), np.float64))
-
+                U = (q1 / q3) * self.__camera.fx() + self.__camera.cx()
+                V = (q2 / q3) * self.__camera.fy() + self.__camera.cy()
                 # boundary check
-                if uvCoords[0] < 0 or uvCoords[1] < 0 or uvCoords[0] > (w-1) or uvCoords[1] > (h-1):
+                if U < 0 or V < 0 or U > (w-1) or V > (h-1):
                     continue
 
-                distVal = ImageProcessing.getInterpolatedElement(distTransMat, uvCoords[0], uvCoords[1])
+                distVal = ImageProcessing.getInterpolatedElement(distTransMat, U, V)
            
                 poi = np.array([u, v])
 
                 if takeValuesFromDistTrans:
-                    poi = np.array([int(uvCoords[0]), int(uvCoords[1]) ])
+                    poi = np.array([int(U), int(V) ])
 
                 if distVal <= self.__edgeDistanceLowerBoundary:
                     reprojectedEdges.itemset((poi[1], poi[0], 0), reprojectedEdges.item((poi[1], poi[0], 0)) + 1)
@@ -455,11 +456,12 @@ class EdgeMatcher:
         q1 = frameTo.invT().item((0, 0)) * p1 + frameTo.invT().item((0, 1)) * p2 + frameTo.invT().item((0, 2)) * p3 + frameTo.invT().item((0, 3))
         q2 = frameTo.invT().item((1, 0)) * p1 + frameTo.invT().item((1, 1)) * p2 + frameTo.invT().item((1, 2)) * p3 + frameTo.invT().item((1, 3))
         q3 = frameTo.invT().item((2, 0)) * p1 + frameTo.invT().item((2, 1)) * p2 + frameTo.invT().item((2, 2)) * p3 + frameTo.invT().item((2, 3))
-        return np.array(([q1],[q2],[q3]), np.float64)
+
         # lower performance
         # return np.array([q1, q2, q3], np.float64)
         # point3d = np.array(([point3d[0]],[point3d[1]],[point3d[2]]), np.float64)
         # return np.dot(frameTo.invT_R(), np.dot(frameFrom.R(), point3d) + frameFrom.t()) + frameTo.invT_t()
         # point3d = np.array(([point3d[0]],[point3d[1]],[point3d[2]], [1.0]), np.float64)
         # return np.dot(frameTo.invT(), np.dot(frameFrom.T, point3d))
+        return np.array(([q1],[q2],[q3]), np.float64)
 
