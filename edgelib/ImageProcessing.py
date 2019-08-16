@@ -99,6 +99,8 @@ def getInterpolatedElement(mat: np.ndarray = None, x: float = None, y: float = N
     '''
     Bilinear interpolation
     see https: // github.com/JakobEngel/dso/blob/master/src/util/globalFuncs.h
+
+    Returns interpolated value.
     '''
     if mat is None:
         raise ValueError('Invalid input matrix.')
@@ -130,6 +132,8 @@ def createHeatmap(img: np.ndarray = None, colormap: int = cv.COLORMAP_JET) -> np
     img Input image.
 
     colormap OpenCV colormap, e.g. COLORMAP_HOT
+
+    Returns heatmap of image.
     '''
     if img is None:
         raise ValueError('Invalid input image.')
@@ -145,3 +149,56 @@ def createHeatmap(img: np.ndarray = None, colormap: int = cv.COLORMAP_JET) -> np
     cv.normalize(img, heatmap, 0, 255, cv.NORM_MINMAX, cv.CV_8UC1)
     
     return cv.applyColorMap(heatmap, colormap)
+
+def getGradientInformation(img: np.ndarray = None) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+    '''
+    Calculate gradient magnitude and orientation of an image by central differences.
+
+    img Image. Multichannel images will be converted to single channel.
+
+    Returns dx, dy, gradient magnitude and orientation.
+    '''
+    if img is None:
+        raise ValueError('Invalid image.')
+
+    if img.ndim == 3:
+        img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    elif img.ndim == 4:
+        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
+    
+    #tmpRgb = destFrame.depth
+    #tmpRgb = cv.blur(tmpRgb, (blurKernelSize, blurKernelSize))
+    #tmpRgb = cv.cvtColor(tmpRgb, cv.COLOR_BGR2HSV)
+
+    # dxImg = []
+    # dyImg = []
+    # magImg = []
+    # angleImg = []
+    #for c in range(tmpRgb.ndim):
+        #if tmpRgb.ndim >= 3:
+        #    dy, dx = np.gradient(tmpRgb[:,:,c].astype(np.float64))
+        #else:
+            # dy, dx = np.gradient(tmpRgb.astype(np.float64))
+            # mag = np.sqrt(dx*dx + dy*dy)
+            # angle = np.dot(np.arctan(np.divide(dy, dx)), 180.0/np.pi)
+    # dxImg.append(dx)
+    # dyImg.append(dy)
+    # magImg.append(mag)
+    # angleImg.append(angle)
+
+    # dxImg = np.stack(dxImg, axis=2)
+    # dyImg = np.stack(dyImg, axis=2)
+    # magImg = np.stack(magImg, axis=2)
+    # angleImg = np.stack(angleImg, axis=2)
+
+    dy, dx = np.gradient(img.astype(np.float64))
+    magnitude = np.sqrt(dx*dx + dy*dy)
+    orientation = np.dot(np.arctan(np.divide(dy, dx)), 180.0/np.pi)
+
+    #angle[np.where(meaningfulEdges==0)] = None
+    #mag[np.where(meaningfulEdges==0)] = 0
+    # amax = np.amax(mag)
+    # mag[np.where(mag<amax/2.0)] = None
+    # im_conv = np.stack(ims, axis=2).astype("uint8")
+
+    return (dx, dy, magnitude, orientation)

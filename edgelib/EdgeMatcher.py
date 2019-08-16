@@ -10,6 +10,7 @@ from .Camera import Camera
 from .Frame import Frame
 from . import ImageProcessing
 from . import Canny
+from scipy import signal
 
 
 class EdgeMatcherMode(IntEnum):
@@ -223,7 +224,7 @@ class EdgeMatcher:
 
         # PLOTTING
         if outputDir is not None:
-            rgbImg = cv.cvtColor(destFrame.rgb.copy(), cv.COLOR_BGR2BGRA)
+            rgbImg = cv.cvtColor(destFrame.rgb, cv.COLOR_BGR2BGRA)
             depthImg = cv.cvtColor(ImageProcessing.createHeatmap(destFrame.depth.copy()), cv.COLOR_BGR2RGBA)
             #depthImg[np.where((depthImg==[0,0,0,255]).all(axis=2))] = [255,255,255,255]
             combined = cv.addWeighted(rgbImg, 0.7, depthImg, 0.3, 0)
@@ -232,17 +233,44 @@ class EdgeMatcher:
             combined[np.nonzero(good)] = [0, 255, 255, 255]
             combined[np.nonzero(worse)] = [0, 0, 255, 255]
 
+            # central differences
+            dx, dy, mag, orientation = ImageProcessing.getGradientInformation(destFrame.rgb)
+
             fig = plt.figure(1)
-            # plt.subplot(131)
-            # plt.axis('off')
-            # plt.imshow(rgbImg)
-            # plt.subplot(132)
-            # plt.axis('off')
-            # plt.imshow(depthImg)
-            plt.subplot(111)
+            fig.suptitle('Gray Blurred')
+            plt.subplot(321)
             plt.axis('off')
+            plt.title('Projected Points')
             plt.imshow(cv.cvtColor(combined, cv.COLOR_BGRA2RGBA))
-            # plt.show()
+
+            plt.subplot(322)
+            plt.axis('off')
+            plt.title('Gradient Base Image')
+            plt.imshow(destFrame.rgb, cmap='gray')
+
+            plt.subplot(323)
+            plt.axis('off')
+            plt.title('dx')
+            plt.imshow(dx, cmap='gray')
+
+            plt.subplot(324)
+            plt.axis('off')
+            plt.title('dy')
+            plt.imshow(dy, cmap='gray')
+
+            plt.subplot(325)
+            plt.axis('off')
+            plt.title('Angle')
+            plt.imshow(orientation, cmap='hsv')
+
+            plt.subplot(326)
+            plt.axis('off')
+            plt.title('Magnitude')
+            plt.imshow(mag, cmap='hot')
+            print('angle', np.amax(orientation), np.amin(orientation))
+            print('mag', np.amax(mag), np.amin(mag))
+            
+            plt.show()
 
             if not os.path.exists(os.path.join(outputDir, 'plots')):
                 os.makedirs(os.path.join(outputDir, 'plots'))
@@ -401,9 +429,9 @@ class EdgeMatcher:
                 X = (u - self.__camera.cx()) * z / self.__camera.fx()
                 Y = (v - self.__camera.cy()) * z / self.__camera.fy()
                 # rotate, translate to other frame
-                p1 = frameFrom.T.item((0, 0)) * X + frameFrom.T.item((0, 1)) * Y + frameFrom.T.item((0, 2)) * z + frameFrom.T.item((0, 3))
-                p2 = frameFrom.T.item((1, 0)) * X + frameFrom.T.item((1, 1)) * Y + frameFrom.T.item((1, 2)) * z + frameFrom.T.item((1, 3))
-                p3 = frameFrom.T.item((2, 0)) * X + frameFrom.T.item((2, 1)) * Y + frameFrom.T.item((2, 2)) * z + frameFrom.T.item((2, 3))
+                p1 = frameFrom.T().item((0, 0)) * X + frameFrom.T().item((0, 1)) * Y + frameFrom.T().item((0, 2)) * z + frameFrom.T().item((0, 3))
+                p2 = frameFrom.T().item((1, 0)) * X + frameFrom.T().item((1, 1)) * Y + frameFrom.T().item((1, 2)) * z + frameFrom.T().item((1, 3))
+                p3 = frameFrom.T().item((2, 0)) * X + frameFrom.T().item((2, 1)) * Y + frameFrom.T().item((2, 2)) * z + frameFrom.T().item((2, 3))
                 q1 = frameTo.invT().item((0, 0)) * p1 + frameTo.invT().item((0, 1)) * p2 + frameTo.invT().item((0, 2)) * p3 + frameTo.invT().item((0, 3))
                 q2 = frameTo.invT().item((1, 0)) * p1 + frameTo.invT().item((1, 1)) * p2 + frameTo.invT().item((1, 2)) * p3 + frameTo.invT().item((1, 3))
                 q3 = frameTo.invT().item((2, 0)) * p1 + frameTo.invT().item((2, 1)) * p2 + frameTo.invT().item((2, 2)) * p3 + frameTo.invT().item((2, 3))
@@ -450,9 +478,9 @@ class EdgeMatcher:
             raise ValueError('Invalid point.')
 
         # rotate, translate point P = [x, y, z] -> uvCoords = frameToInvT * (frameFromT * P))
-        p1 = frameFrom.T.item((0, 0)) * point3d[0] + frameFrom.T.item((0, 1)) * point3d[1] + frameFrom.T.item((0, 2)) * point3d[2] + frameFrom.T.item((0, 3))
-        p2 = frameFrom.T.item((1, 0)) * point3d[0] + frameFrom.T.item((1, 1)) * point3d[1] + frameFrom.T.item((1, 2)) * point3d[2] + frameFrom.T.item((1, 3))
-        p3 = frameFrom.T.item((2, 0)) * point3d[0] + frameFrom.T.item((2, 1)) * point3d[1] + frameFrom.T.item((2, 2)) * point3d[2] + frameFrom.T.item((2, 3))
+        p1 = frameFrom.T().item((0, 0)) * point3d[0] + frameFrom.T().item((0, 1)) * point3d[1] + frameFrom.T().item((0, 2)) * point3d[2] + frameFrom.T().item((0, 3))
+        p2 = frameFrom.T().item((1, 0)) * point3d[0] + frameFrom.T().item((1, 1)) * point3d[1] + frameFrom.T().item((1, 2)) * point3d[2] + frameFrom.T().item((1, 3))
+        p3 = frameFrom.T().item((2, 0)) * point3d[0] + frameFrom.T().item((2, 1)) * point3d[1] + frameFrom.T().item((2, 2)) * point3d[2] + frameFrom.T().item((2, 3))
         q1 = frameTo.invT().item((0, 0)) * p1 + frameTo.invT().item((0, 1)) * p2 + frameTo.invT().item((0, 2)) * p3 + frameTo.invT().item((0, 3))
         q2 = frameTo.invT().item((1, 0)) * p1 + frameTo.invT().item((1, 1)) * p2 + frameTo.invT().item((1, 2)) * p3 + frameTo.invT().item((1, 3))
         q3 = frameTo.invT().item((2, 0)) * p1 + frameTo.invT().item((2, 1)) * p2 + frameTo.invT().item((2, 2)) * p3 + frameTo.invT().item((2, 3))
@@ -462,6 +490,6 @@ class EdgeMatcher:
         # point3d = np.array(([point3d[0]],[point3d[1]],[point3d[2]]), np.float64)
         # return np.dot(frameTo.invT_R(), np.dot(frameFrom.R(), point3d) + frameFrom.t()) + frameTo.invT_t()
         # point3d = np.array(([point3d[0]],[point3d[1]],[point3d[2]], [1.0]), np.float64)
-        # return np.dot(frameTo.invT(), np.dot(frameFrom.T, point3d))
+        # return np.dot(frameTo.invT(), np.dot(frameFrom.T(), point3d))
         return np.array(([q1],[q2],[q3]), np.float64)
 

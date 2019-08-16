@@ -15,10 +15,12 @@ class Frame:
         '''
         Constructor.
         '''
+        # images
         self.rgb = None
         self.depth = None
         self.mask = None
-        self.T = None
+        # 4x4 transformation matrix
+        self.__T = None
         self.__invT = None
 
     def __str__(self) -> str:
@@ -30,7 +32,7 @@ class Frame:
         out = 'RGB: %dx%d\n' % (self.rgb.shape[:2])
         out += 'Depth: %dx%d\n' % (self.depth.shape[:2])
         out += 'Mask: %dx%d\n' % (self.mask.shape[:2])
-        out += 'T: %s\nT⁻¹%s\n' % (np.array2string(self.T), np.array2string(self.__invT))
+        out += 'T: %s\nT⁻¹%s\n' % (np.array2string(self.__T), np.array2string(self.__invT))
 
         return out
 
@@ -40,7 +42,7 @@ class Frame:
 
         Returns the 3x3 rotation matrix.
         '''
-        return self.__getR(self.T)
+        return self.__getR(self.__T)
 
     def invT_R(self) -> np.ndarray:
         '''
@@ -56,7 +58,7 @@ class Frame:
 
         Returns the 3x1 translation vector.
         '''
-        return self.__gett(self.T)
+        return self.__gett(self.__T)
 
     def invT_t(self) -> np.ndarray:
         '''
@@ -77,7 +79,7 @@ class Frame:
         if T is None:
             raise ValueError('Invalid transformation matrix.')
 
-        return np.array(([T[0][0], T[0][1], T[0][2]],[T[1][0], T[1][1], T[1][2]],[T[2][0], T[2][1], T[2][2]]), np.float64)
+        return T[0:3, 0:3].astype(np.float64)
 
     def __gett(self, T: np.ndarray = None) -> np.ndarray:
         '''
@@ -90,13 +92,19 @@ class Frame:
         if T is None:
             raise ValueError('Invalid transformation matrix.')
 
-        return np.array(([T[0][3]],[T[1][3]],[T[2][3]]), np.float64)
+        return T[0:3, 3].astype(np.float64)
 
     def invT(self) -> np.ndarray:
         '''
         Get the inverse transformation matrx.
         '''
         return self.__invT
+
+    def T(self) -> np.ndarray:
+        '''
+        Get the transformation matrix.
+        '''
+        return self.__T
 
     def setT(self, q: List[float] = None, t: List[float] = None) -> None:
         '''
@@ -117,7 +125,7 @@ class Frame:
         s = sophus.Se3(sophus.So3(sophus.Quaternion(q[0], v)), t)
 
         T = s.matrix()
-        self.T = np.array(T, np.float64)
+        self.__T = np.array(T, np.float64)
         self.__invT = np.array(T.inv(), np.float64)
 
     def isValid(self) -> bool:
@@ -134,10 +142,3 @@ class Frame:
             return False
 
         return True
-
-    @staticmethod
-    def test():
-        '''
-        '''
-        f = Frame()
-        f.setT([-0.3707, 0.8752, 0.2850, -0.1243], (1.2742, 0.8795, 1.5136))
