@@ -12,6 +12,68 @@ from . import ImageProcessing
 from . import Canny
 from scipy import signal
 
+class EdgeMatcherFrame(Frame):
+    '''
+    Extension of the frame for the edge matching algorithm.
+    '''
+    def __init__(self):
+        '''
+        Constructor.
+        '''
+        super().__init__()
+
+        # key = uid, value = meaningful edge result
+        self.projectedEdgeResults = {}
+        self.meaningfulEdges = None
+    
+    def printProjectedEdgeResults(self) -> None:
+        '''
+        Print projected edge results as best, good and worse in percent.
+        '''
+        for uid, projectedEdges in self.projectedEdgeResults.items():
+            best, good, worse = cv.split(projectedEdges)
+            
+            numBest = len(best[np.where(best>0)])
+            numGood = len(good[np.where(good>0)])
+            numWorse = len(worse[np.where(worse>0)])
+            overall = numBest + numGood + numWorse
+
+            print(uid, ': %.2f %.2f %.2f' % (numBest*100/overall, numGood*100/overall, numWorse*100/overall))
+
+    def concatProjectedResults(self) -> np.ndarray:
+        '''
+        Concatenate projected results in one single image. Each channel represents one of the following
+        conditions: best, good or worse images.
+        '''
+        if not self.isValid():
+            raise ValueError('Invalid frame data.')
+
+        h, w = self.mask.shape
+        concatEdges = np.zeros((h, w, 3))
+
+        for projectedResult in self.projectedEdgeResults.values():
+            concatEdges = cv.add(concatEdges, projectedResult)
+        
+        return concatEdges
+
+    def getMeaningfulEdges(self):
+        '''
+        Get meaningful edges of the current frame
+        '''
+        total = len(self.projectedEdgeResults)
+
+        if total == 0:
+            return None
+
+        projectedEdges = self.concatProjectedResults()
+        best, good, worse = cv.split(projectedEdges)        
+        meaningfulEdges = cv.add(best, good)
+        # remove values less the n times seen
+        #minNumOfFramesDetected = 0 # total * 0.25
+        #_, meaningfulEdges = cv.threshold(meaningfulEdges, minNumOfFramesDetected, 255, cv.THRESH_BINARY)
+
+        return meaningfulEdges    
+
 
 class EdgeMatcherMode(IntEnum):
     '''
@@ -23,7 +85,6 @@ class EdgeMatcherMode(IntEnum):
     BACKPROJECT = 2
     # back to front and front to back projection to a center frame (re- and backproject)
     CENTERPROJECT = 3
-
 
 class EdgeMatcher:
     '''
@@ -87,7 +148,7 @@ class EdgeMatcher:
         self.__frameOffset = frameOffset
 
     def reprojectEdgesByAscendingCannyThreshold(self,
-                                                frame: Frame = None,
+                                                frame: EdgeMatcherFrame = None,
                                                 stepRange: int = 50,
                                                 validEdgesThreshold: float = 0.5,
                                                 cannyThres1: int = 0,
@@ -162,7 +223,7 @@ class EdgeMatcher:
 
         return meaningfulEdges
 
-    def reprojectEdgesToConsecutiveFrameSet(self, frame: Frame = None, mode: EdgeMatcherMode = EdgeMatcherMode.REPROJECT, outputDir: str = None) -> np.ndarray:
+    def reprojectEdgesToConsecutiveFrameSet(self, frame: EdgeMatcherFrame = None, mode: EdgeMatcherMode = EdgeMatcherMode.REPROJECT, outputDir: str = None) -> np.ndarray:
         '''
         Reproject edges from a destination frame based on the frame offset to a set of consecutive frames.
 
@@ -188,13 +249,16 @@ class EdgeMatcher:
         if len(self.__frameSet) <= maxFrameOffset:
             return None
 
+        destFrameIndex = 0
+
         if mode == EdgeMatcherMode.BACKPROJECT or mode == EdgeMatcherMode.CENTERPROJECT:
-            destFrame = self.__frameSet[self.__frameOffset]
+            destFrameIndex = self.__frameOffset
         elif mode == EdgeMatcherMode.REPROJECT:
-            destFrame = self.__frameSet[0]
+            destFrameIndex = 0
+
+        destFrame = self.__frameSet[destFrameIndex]
 
         h, w = destFrame.mask.shape
-        meaningfulEdges = np.zeros((h, w, 3))
         maxFrameOffset = len(self.__frameSet)
 
         for i in range(0, maxFrameOffset):
@@ -207,22 +271,69 @@ class EdgeMatcher:
                     continue
 
             start = time.time()
-
             projectedEdges = self.projectEdges(destFrame, self.__frameSet[i])
             logging.info('Projected %d in %f sec.' % (i, time.time() - start))
 
+            destFrame.projectedEdgeResults[self.__frameSet[i].uid] = projectedEdges
+
+        destFrame.printProjectedEdgeResults()
+
+        classifiedEdges = destFrame.getMeaningfulEdges()
+
+        refinedMeaningfulEdges = np.zeros((h, w, 3))
+
+        for i in range(0, maxFrameOffset):
+            if i == destFrameIndex:
+                continue
+
+            tmpDestFrame = destFrame
+            tmpFrameTo = self.__frameSet[i]
+
+            tmpDestFrameMeaningFulEdges = tmpDestFrame.getMeaningfulEdges()
+            tmpFrameToMeaningFulEdges = tmpFrameTo.getMeaningfulEdges()
+
+            if tmpFrameToMeaningFulEdges is None:
+                continue
+
+
+            _, tmpDestFrameNewMask = cv.threshold(tmpDestFrameMeaningFulEdges, 0, 255, cv.THRESH_BINARY)
+            _, tmpFrameToNewMask = cv.threshold(tmpFrameToMeaningFulEdges, 0, 255, cv.THRESH_BINARY)
+            tmpFrameTo.mask = tmpFrameToNewMask.astype(np.uint8)
+            tmpDestFrame.mask = tmpDestFrameNewMask.astype(np.uint8)
+
+            projectedEdges = self.projectEdges(destFrame, tmpFrameTo)
+
             # accumulate values
-            meaningfulEdges = cv.add(meaningfulEdges, projectedEdges)
+            refinedMeaningfulEdges = cv.add(refinedMeaningfulEdges, projectedEdges)
 
-        best, good, worse = cv.split(meaningfulEdges)
-        meaningfulEdges = cv.add(best, good)
+        best, good, worse = cv.split(refinedMeaningfulEdges)
+        refinedMeaningfulEdges = cv.add(best, good)
 
-        print('MaxVal', np.amax(meaningfulEdges))
-        # remove values less the n times seen
-        minNumOfFramesDetected = 0# maxFrameOffset * 0.25
-        _, meaningfulEdges = cv.threshold(meaningfulEdges, minNumOfFramesDetected, 255, cv.THRESH_BINARY)
+        _, tmpClass = cv.threshold(classifiedEdges, 0, 255, cv.THRESH_BINARY)
+        _, tmpRefined = cv.threshold(refinedMeaningfulEdges, 0, 255, cv.THRESH_BINARY)
 
-        # PLOTTING
+        fig = plt.figure(1, figsize=(20,40))
+        plt.subplot(321)
+        plt.imshow(destFrame.rgb)
+        plt.subplot(322)
+        plt.title('Backprojected Edges')
+        plt.imshow(classifiedEdges, cmap='hot')
+        plt.subplot(323)
+        plt.title('Backprojected Classified Edges')
+        plt.imshow(refinedMeaningfulEdges, cmap='hot')
+        plt.subplot(324)
+        plt.title('Both')
+        plt.imshow(cv.add(classifiedEdges, refinedMeaningfulEdges), cmap='hot')
+        plt.subplot(325)
+        plt.title('Diff')
+        plt.imshow(cv.add(tmpClass, -1 * tmpRefined), cmap='hot')
+        plt.subplot(326)
+        plt.title('Both thresholded')
+        plt.imshow(cv.add(tmpClass, tmpRefined), cmap='hot')
+        plt.show()
+
+        # PLOTTING 
+        outputDir = None
         if outputDir is not None:
             rgbImg = cv.cvtColor(destFrame.rgb, cv.COLOR_BGR2BGRA)
             depthImg = cv.cvtColor(ImageProcessing.createHeatmap(destFrame.depth.copy()), cv.COLOR_BGR2RGBA)
@@ -233,10 +344,15 @@ class EdgeMatcher:
             combined[np.nonzero(good)] = [0, 255, 255, 255]
             combined[np.nonzero(worse)] = [0, 0, 255, 255]
 
-            # central differences
-            dx, dy, mag, orientation = ImageProcessing.getGradientInformation(destFrame.rgb)
+            # gradient (central differences)
+            tmp = destFrame.rgb.copy()
+            #tmp = cv.normalize(tmp, None, 0, 255, cv.NORM_MINMAX, cv.CV_8UC1)
+            dx, dy, mag, orientation = ImageProcessing.getGradientInformation(tmp)
+            # mag[np.where(destFrame.depth==0)] = 0
+            # orientation[np.where(destFrame.depth==0)] = 0
+            #Canny.canny(tmp, 10, 10, 3, True, 3)
 
-            fig = plt.figure(1)
+            fig = plt.figure(2)
             fig.suptitle('Gray Blurred')
             plt.subplot(321)
             plt.axis('off')
@@ -246,7 +362,7 @@ class EdgeMatcher:
             plt.subplot(322)
             plt.axis('off')
             plt.title('Gradient Base Image')
-            plt.imshow(destFrame.rgb, cmap='gray')
+            plt.imshow(tmp, cmap='gray')
 
             plt.subplot(323)
             plt.axis('off')
@@ -260,15 +376,15 @@ class EdgeMatcher:
 
             plt.subplot(325)
             plt.axis('off')
-            plt.title('Angle')
+            plt.title('Orientation')
             plt.imshow(orientation, cmap='hsv')
 
             plt.subplot(326)
             plt.axis('off')
             plt.title('Magnitude')
-            plt.imshow(mag, cmap='hot')
-            print('angle', np.amax(orientation), np.amin(orientation))
-            print('mag', np.amax(mag), np.amin(mag))
+            plt.imshow(cv.normalize(mag, None, 0, 255, cv.NORM_MINMAX, cv.CV_8UC1), cmap='hot')
+            print('orientation', np.amax(orientation), np.amin(orientation))
+            print('magnitude', np.amax(mag), np.amin(mag))
             
             plt.show()
 
@@ -281,9 +397,9 @@ class EdgeMatcher:
         # remove first frame from frame set
         self.__frameSet.pop(0)
 
-        return meaningfulEdges
+        return classifiedEdges
 
-    def reprojectEdgesFromConsecutiveFrameSet(self, frame: Frame = None, mode: EdgeMatcherMode = EdgeMatcherMode.REPROJECT, outputDir: str = None) -> np.ndarray:
+    def reprojectEdgesFromConsecutiveFrameSet(self, frame: EdgeMatcherFrame = None, mode: EdgeMatcherMode = EdgeMatcherMode.REPROJECT, outputDir: str = None) -> np.ndarray:
         '''
         Reproject edges from consectutive frames to a destination frame based on the frame offset.
 
@@ -356,16 +472,16 @@ class EdgeMatcher:
             combined[np.nonzero(good)] = [0, 255, 255, 255]
             combined[np.nonzero(worse)] = [0, 0, 255, 255]
 
-            fig = plt.figure(1)
+            #fig = plt.figure(1)
             # plt.subplot(131)
             # plt.axis('off')
             # plt.imshow(rgbImg)
             # plt.subplot(132)
             # plt.axis('off')
             # plt.imshow(depthImg)
-            plt.subplot(111)
-            plt.axis('off')
-            plt.imshow(cv.cvtColor(combined, cv.COLOR_BGRA2RGBA))
+            #plt.subplot(111)
+            #plt.axis('off')
+            #plt.imshow(cv.cvtColor(combined, cv.COLOR_BGRA2RGBA))
             # plt.show()
 
             if not os.path.exists(os.path.join(outputDir, 'plots')):
