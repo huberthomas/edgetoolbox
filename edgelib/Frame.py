@@ -15,6 +15,7 @@ class Frame:
         '''
         Constructor.
         '''
+        self.uid = None
         # images
         self.rgb = None
         self.depth = None
