@@ -161,11 +161,15 @@ def getGradientInformation(img: np.ndarray = None) -> (np.ndarray, np.ndarray, n
     if img is None:
         raise ValueError('Invalid image.')
 
-    if img.ndim == 3:
+    c = img.ndim
+
+    if c == 3:
         img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    elif img.ndim == 4:
+    elif c == 4:
         img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
     
+    # multidirectional sobel https://www.researchgate.net/publication/314446743_A_Novel_Approach_for_Color_Image_Edge_Detection_Using_Multidirectional_Sobel_Filter_on_HSV_Color_Space
+    # https://pdfs.semanticscholar.org/7e87/b109d5c0205c0fc36a521ef88a860b4b5acf.pdf
     #tmpRgb = destFrame.depth
     #tmpRgb = cv.blur(tmpRgb, (blurKernelSize, blurKernelSize))
     #tmpRgb = cv.cvtColor(tmpRgb, cv.COLOR_BGR2HSV)
@@ -192,8 +196,11 @@ def getGradientInformation(img: np.ndarray = None) -> (np.ndarray, np.ndarray, n
     # angleImg = np.stack(angleImg, axis=2)
 
     dy, dx = np.gradient(img.astype(np.float64))
-    magnitude = np.sqrt(dx*dx + dy*dy)
-    orientation = np.dot(np.arctan(np.divide(dy, dx)), 180.0/np.pi)
+    #magnitude = np.sqrt(dx**2 + dy**2)
+    magnitude = np.hypot(dx, dy)
+    magnitude = np.divide(magnitude, magnitude.max())
+    #orientation = np.dot(np.arctan(np.divide(dy, dx)), 180.0/np.pi) # -90 < x < 90
+    orientation = np.dot(np.arctan2(dy, dx), 180.0/np.pi) # -180 < x < 180
 
     #angle[np.where(meaningfulEdges==0)] = None
     #mag[np.where(meaningfulEdges==0)] = 0
