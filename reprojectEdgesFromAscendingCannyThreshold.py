@@ -8,9 +8,8 @@ import multiprocessing as mp
 from edgelib import Utilities
 from edgelib import Canny
 from edgelib.TumGroundTruthHandler import TumGroundTruthHandler
-from edgelib.EdgeMatcher import EdgeMatcher, EdgeMatcherMode
+from edgelib.EdgeMatcher import EdgeMatcher, EdgeMatcherMode, EdgeMatcherFrame
 from edgelib.Camera import Camera
-from edgelib.Frame import Frame
 
 
 def checkInputParameter(args: any) -> any:
@@ -134,7 +133,8 @@ def main() -> None:
             depth = cv.imread(os.path.join(args.depthDir, a.depth), cv.IMREAD_UNCHANGED)
             mask = cv.imread(os.path.join(args.maskDir, a.rgb), cv.IMREAD_GRAYSCALE)
 
-            frame = Frame()
+            frame = EdgeMatcherFrame()
+            frame.uid = a.gt.timestamp
             frame.rgb = rgb
             frame.depth = depth
             frame.mask = mask
