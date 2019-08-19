@@ -5,9 +5,8 @@ import os
 import sys
 import cv2 as cv
 from edgelib.TumGroundTruthHandler import TumGroundTruthHandler
-from edgelib.EdgeMatcher import EdgeMatcher, EdgeMatcherMode
+from edgelib.EdgeMatcher import EdgeMatcher, EdgeMatcherMode, EdgeMatcherFrame
 from edgelib.Camera import Camera
-from edgelib.Frame import Frame
 from edgelib import Utilities
 import matplotlib.pyplot as plt
 
@@ -83,6 +82,7 @@ def parseArgs() -> any:
     parser.add_argument('-u', '--upperEdgeDistanceBoundary', type=float, default=5, help='Edges are counted as worse above this reprojected edge distance.')
     parser.add_argument('-p', '--projectionMode', type=int, choices=[EdgeMatcherMode.REPROJECT, EdgeMatcherMode.BACKPROJECT, EdgeMatcherMode.CENTERPROJECT],
                         default=1, help='Set the frame projection mode. 1 is backprojection, 2 is reprojection and 3 is center frame projection. Default is 1.')
+
     return parser.parse_args()
 
 
@@ -128,7 +128,8 @@ def main() -> None:
             depth = cv.imread(os.path.join(args.depthDir, a.depth), cv.IMREAD_UNCHANGED)
             mask = cv.imread(os.path.join(args.maskDir, a.rgb), cv.IMREAD_GRAYSCALE)
 
-            frame = Frame()
+            frame = EdgeMatcherFrame()
+            frame.uid = a.gt.timestamp
             frame.rgb = rgb
             frame.depth = depth
             frame.mask = mask
