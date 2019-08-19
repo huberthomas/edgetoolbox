@@ -19,7 +19,7 @@ Sample:
     conda create -n yourenv python=3
     conda activate yourenv
     conda install pip
-    pip install -r requirements.txt
+    pip install -r requirements.txt --user
 
 ## Datasets
 
