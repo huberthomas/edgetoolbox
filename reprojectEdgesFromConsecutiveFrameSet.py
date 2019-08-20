@@ -10,6 +10,37 @@ from edgelib.Camera import Camera
 from edgelib import Utilities
 import matplotlib.pyplot as plt
 
+'''
+from edgelib import Canny
+import numpy as np
+baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz'
+hha = cv.imread(os.path.join(baseDir, 'hha/1311867170.450076.png'))
+depth = cv.cvtColor(cv.imread(os.path.join(baseDir, 'depth/1311867170.450076.png')), cv.COLOR_BGR2GRAY)
+edge = Canny.canny(hha, 5, 10, 3, True, 5)
+nanEdge = edge.copy()
+edge[np.where(depth==0)] = 0
+
+fig = plt.figure(1)
+fig.suptitle('Gray Blurred')
+plt.subplot(221)
+plt.axis('off')
+plt.title('HHA')
+plt.imshow(cv.cvtColor(hha, cv.COLOR_BGRA2RGBA))
+plt.subplot(222)
+plt.axis('off')
+plt.title('Canny')
+plt.imshow(edge, cmap='gray')
+plt.subplot(223)
+plt.axis('off')
+plt.title('Depth')
+plt.imshow(depth, cmap='jet')
+plt.subplot(224)
+plt.axis('off')
+plt.title('Depth')
+plt.imshow(nanEdge, cmap='gray')
+plt.show()
+exit(0)
+'''
 
 def checkInputParameter(args: any) -> any:
     '''
@@ -82,6 +113,7 @@ def parseArgs() -> any:
     parser.add_argument('-u', '--upperEdgeDistanceBoundary', type=float, default=5, help='Edges are counted as worse above this reprojected edge distance.')
     parser.add_argument('-p', '--projectionMode', type=int, choices=[EdgeMatcherMode.REPROJECT, EdgeMatcherMode.BACKPROJECT, EdgeMatcherMode.CENTERPROJECT],
                         default=1, help='Set the frame projection mode. 1 is backprojection, 2 is reprojection and 3 is center frame projection. Default is 1.')
+    # parser.add_argument('-s', '--scale', type=int, choices=[0,1,2], default=0, help='Set the scale level. 0 = 1:1, 1 = 1:2, 2 = 1:4')
 
     return parser.parse_args()
 
@@ -104,6 +136,12 @@ def main() -> None:
         logging.info('Loading data from camera calibration file.')
         camera = Camera()
         camera.loadFromFile(args.camCalibFile)
+
+        # for _ in range(0, args.scale):
+        #     camera.setFx(camera.fx()/2.0)
+        #     camera.setFy(camera.fy()/2.0)
+        #     camera.setCx(camera.cx()/2.0)
+        #     camera.setCy(camera.cy()/2.0)
 
         logging.info('Loading data from associated ground truth file.')
         gtHandler = TumGroundTruthHandler()
@@ -128,6 +166,11 @@ def main() -> None:
             depth = cv.imread(os.path.join(args.depthDir, a.depth), cv.IMREAD_UNCHANGED)
             mask = cv.imread(os.path.join(args.maskDir, a.rgb), cv.IMREAD_GRAYSCALE)
 
+            # for _ in range(0, args.scale):
+            #     rgb = cv.pyrDown(rgb)
+            #     depth = cv.pyrDown(depth)
+            #     mask = cv.pyrDown(mask)
+
             frame = EdgeMatcherFrame()
             frame.uid = a.gt.timestamp
             frame.rgb = rgb
@@ -151,7 +194,7 @@ def main() -> None:
                 raise ValueError('Unknown projection mode "%d".' % (args.projectionMode))
 
             # save result
-            cv.imwrite(os.path.join(args.outputDir, frameFileName), meaningfulEdges)
+            cv.imwrite(os.path.join(args.outputDir, frameFileName), meaningfulEdges * 255)
             logging.info('Saving "%s"' % (os.path.join(args.outputDir, frameFileName)))
             frameFileNames.pop(0)
 
