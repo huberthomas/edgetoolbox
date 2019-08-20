@@ -2,6 +2,7 @@ import logging
 import numpy as np
 import cv2 as cv
 from .Frame import Frame
+from . import Utilities
 
 class EdgeMatcherFrame(Frame):
     '''
@@ -59,25 +60,31 @@ class EdgeMatcherFrame(Frame):
         if total == 0:
             return None
 
-        projectedEdges = self.concatProjectedResults()
-        best, good, worse = cv.split(projectedEdges)        
+        h, w = self.mask.shape
+        meaningfulEdges = np.zeros((h, w), np.float64)
 
-        maxVal = projectedEdges.max()        
-        numBest = len(best[np.where(best>0)])
-        numGood = len(good[np.where(good>0)])
-        numWorse = len(worse[np.where(worse>0)])
-        total = numBest + numGood + numWorse
+        for projectedEdges in self.projectedEdgeResults.values():
+            best, good, worse = cv.split(projectedEdges)
 
-        weight = (numBest + numGood) / (numBest + numGood + numWorse)
-        print(numBest, numGood, numWorse, total, weight)
-        meaningfulEdges = cv.add(best, good)
+            numBest = len(best[np.where(best>0)])
+            numGood = len(good[np.where(good>0)])
+            numWorse = len(worse[np.where(worse>0)])
+            
+            # linear weight function
+            weight = (numBest + numGood) / (numBest + numGood + numWorse)
+            # sinoid weight function
+            # weight = np.sin(Utilities.rescale(weight, 0, 1, 0, np.pi/2.0))
 
-        meaningfulEdges *= weight/maxVal
+            curMeaningfulEdges = cv.add(best, good)
+            curMeaningfulEdges *= weight
 
-        print(maxVal, weight, cv.minMaxLoc(meaningfulEdges))
+            meaningfulEdges = cv.add(meaningfulEdges, curMeaningfulEdges)
+        
+        meaningfulEdges /= len(self.projectedEdgeResults)
+        #print(cv.minMaxLoc(meaningfulEdges))
+
         # remove values less the n times seen
         #minNumOfFramesDetected = 0
         #_, meaningfulEdges = cv.threshold(meaningfulEdges, minNumOfFramesDetected, 255, cv.THRESH_BINARY)
-
 
         return meaningfulEdges  
