@@ -189,3 +189,22 @@ def argsToStr(args) -> None:
         param += ('%s\t%s\n' % (x, str(args.__dict__[x])))
     param += '*'*80
     return param
+
+
+def rescale(val: float = 0, minVal: float = 0, maxVal: float = 0, newMinVal: float = 0, newMaxVal: float = 0) -> float:
+    '''
+    Rescale value to new range.
+
+    val Value to rescale.
+
+    minVal Min range of val.
+
+    maxVal Max range of val.
+
+    newMinVal New min range.
+
+    newMaxVal New max range.
+
+    Returns rescaled value.
+    '''
+    return ((newMaxVal - newMinVal)/(maxVal - minVal)) * (val - maxVal) + newMaxVal
