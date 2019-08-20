@@ -3,6 +3,8 @@ import time
 import logging
 import numpy as np
 import cv2 as cv
+import multiprocessing as mp
+from multiprocessing import Manager
 import matplotlib.pyplot as plt
 from typing import List
 from enum import IntEnum
@@ -11,69 +13,7 @@ from .Frame import Frame
 from . import ImageProcessing
 from . import Canny
 from scipy import signal
-
-class EdgeMatcherFrame(Frame):
-    '''
-    Extension of the frame for the edge matching algorithm.
-    '''
-    def __init__(self):
-        '''
-        Constructor.
-        '''
-        super().__init__()
-
-        # key = uid, value = meaningful edge result
-        self.projectedEdgeResults = {}
-        self.meaningfulEdges = None
-    
-    def printProjectedEdgeResults(self) -> None:
-        '''
-        Print projected edge results as best, good and worse in percent.
-        '''
-        for uid, projectedEdges in self.projectedEdgeResults.items():
-            best, good, worse = cv.split(projectedEdges)
-            
-            numBest = len(best[np.where(best>0)])
-            numGood = len(good[np.where(good>0)])
-            numWorse = len(worse[np.where(worse>0)])
-            overall = numBest + numGood + numWorse
-
-            print(uid, ': %.2f %.2f %.2f' % (numBest*100/overall, numGood*100/overall, numWorse*100/overall))
-
-    def concatProjectedResults(self) -> np.ndarray:
-        '''
-        Concatenate projected results in one single image. Each channel represents one of the following
-        conditions: best, good or worse images.
-        '''
-        if not self.isValid():
-            raise ValueError('Invalid frame data.')
-
-        h, w = self.mask.shape
-        concatEdges = np.zeros((h, w, 3))
-
-        for projectedResult in self.projectedEdgeResults.values():
-            concatEdges = cv.add(concatEdges, projectedResult)
-        
-        return concatEdges
-
-    def getMeaningfulEdges(self):
-        '''
-        Get meaningful edges of the current frame
-        '''
-        total = len(self.projectedEdgeResults)
-
-        if total == 0:
-            return None
-
-        projectedEdges = self.concatProjectedResults()
-        best, good, worse = cv.split(projectedEdges)        
-        meaningfulEdges = cv.add(best, good)
-        # remove values less the n times seen
-        #minNumOfFramesDetected = 0 # total * 0.25
-        #_, meaningfulEdges = cv.threshold(meaningfulEdges, minNumOfFramesDetected, 255, cv.THRESH_BINARY)
-
-        return meaningfulEdges    
-
+from .EdgeMatcherFrame import EdgeMatcherFrame
 
 class EdgeMatcherMode(IntEnum):
     '''
@@ -104,6 +44,7 @@ class EdgeMatcher:
         self.__edgeDistanceUpperBoundary = 10
         self.__frameOffset = 1
         self.__camera = camera
+        self.__numOfThreads = mp.cpu_count()
 
     def setEdgeDistanceBoundaries(self, lowerBoundary: float = None, upperBoundary: float = None) -> None:
         '''
@@ -261,6 +202,10 @@ class EdgeMatcher:
         h, w = destFrame.mask.shape
         maxFrameOffset = len(self.__frameSet)
 
+        start = time.time()
+        result = Manager().dict()
+        param = []  
+
         for i in range(0, maxFrameOffset):
             # skip own projection
             if mode == EdgeMatcherMode.BACKPROJECT or mode == EdgeMatcherMode.CENTERPROJECT:
@@ -270,12 +215,24 @@ class EdgeMatcher:
                 if i == 0:
                     continue
 
-            start = time.time()
-            projectedEdges = self.projectEdges(destFrame, self.__frameSet[i])
-            logging.info('Projected %d in %f sec.' % (i, time.time() - start))
+            param.append((destFrame, 
+                        self.__frameSet[i], 
+                        None, 
+                        False, 
+                        self.__camera, 
+                        (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary), 
+                        result))
 
-            destFrame.projectedEdgeResults[self.__frameSet[i].uid] = projectedEdges
+            # start = time.time()
+            # self.projectEdges(destFrame, self.__frameSet[i])
+            # logging.info('Projected %d in %f sec.' % (i, time.time() - start))
 
+        pool = mp.Pool(processes=self.__numOfThreads)
+        pool.starmap(ImageProcessing.projectEdges, param)
+        pool.terminate()
+
+        logging.info('Projected %d frames in %f sec.' % (maxFrameOffset, time.time() - start))
+        destFrame.projectedEdgeResults = result
         destFrame.printProjectedEdgeResults()
 
         classifiedEdges = destFrame.getMeaningfulEdges()
@@ -286,20 +243,19 @@ class EdgeMatcher:
             if i == destFrameIndex:
                 continue
 
-            tmpDestFrame = destFrame
+            # tmpDestFrame = destFrame
             tmpFrameTo = self.__frameSet[i]
 
-            tmpDestFrameMeaningFulEdges = tmpDestFrame.getMeaningfulEdges()
+            # tmpDestFrameMeaningFulEdges = tmpDestFrame.getMeaningfulEdges()
             tmpFrameToMeaningFulEdges = tmpFrameTo.getMeaningfulEdges()
 
             if tmpFrameToMeaningFulEdges is None:
                 continue
 
-
-            _, tmpDestFrameNewMask = cv.threshold(tmpDestFrameMeaningFulEdges, 0, 255, cv.THRESH_BINARY)
+            # _, tmpDestFrameNewMask = cv.threshold(tmpDestFrameMeaningFulEdges, 0, 255, cv.THRESH_BINARY)
             _, tmpFrameToNewMask = cv.threshold(tmpFrameToMeaningFulEdges, 0, 255, cv.THRESH_BINARY)
             tmpFrameTo.mask = tmpFrameToNewMask.astype(np.uint8)
-            tmpDestFrame.mask = tmpDestFrameNewMask.astype(np.uint8)
+            # tmpDestFrame.mask = tmpDestFrameNewMask.astype(np.uint8)
 
             projectedEdges = self.projectEdges(destFrame, tmpFrameTo)
 
@@ -495,7 +451,7 @@ class EdgeMatcher:
 
         return meaningfulEdges
 
-    def projectEdges(self, frameFrom: Frame = None, frameTo: Frame = None, distTransMat: np.ndarray = None, takeValuesFromDistTrans: bool = False) -> np.ndarray:
+    def projectEdges(self, frameFrom: EdgeMatcherFrame = None, frameTo: Frame = None, distTransMat: np.ndarray = None, takeValuesFromDistTrans: bool = False) -> np.ndarray:
         '''
         Project edges from one frame to another.
 
@@ -563,7 +519,7 @@ class EdgeMatcher:
                 poi = np.array([u, v])
 
                 if takeValuesFromDistTrans:
-                    poi = np.array([int(U), int(V) ])
+                    poi = np.array([int(U), int(V)])
 
                 if distVal <= self.__edgeDistanceLowerBoundary:
                     reprojectedEdges.itemset((poi[1], poi[0], 0), reprojectedEdges.item((poi[1], poi[0], 0)) + 1)
@@ -572,6 +528,7 @@ class EdgeMatcher:
                 elif distVal > self.__edgeDistanceUpperBoundary:
                     reprojectedEdges.itemset((poi[1], poi[0], 2), reprojectedEdges.item((poi[1], poi[0], 2)) + 1)
 
+        frameFrom.projectedEdgeResults[frameTo.uid] = reprojectedEdges
         return reprojectedEdges
 
     def __transformPoint(self, frameFrom: Frame = None, frameTo: Frame = None, point3d: np.ndarray = None) -> np.ndarray:

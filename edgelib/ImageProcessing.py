@@ -3,7 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import List
 from .Camera import Camera
-
+from .Frame import Frame
+from .EdgeMatcherFrame import EdgeMatcherFrame
+from typing import List
 
 def reconstructDepthImg(porousDepthImg: np.ndarray = None,
                         inpaintRadius: int = 5,
@@ -209,3 +211,104 @@ def getGradientInformation(img: np.ndarray = None) -> (np.ndarray, np.ndarray, n
     # im_conv = np.stack(ims, axis=2).astype("uint8")
 
     return (dx, dy, magnitude, orientation)
+
+
+def projectEdges(frameFrom: EdgeMatcherFrame = None, 
+                 frameTo: EdgeMatcherFrame = None, 
+                 distTransMat: np.ndarray = None, 
+                 takeValuesFromDistTrans: bool = False, 
+                 camera: Camera = None, 
+                 edgeDistanceBoundaries: tuple = (0,0),
+                 result: {} = None) -> np.ndarray:
+    '''
+    Project edges from one frame to another.
+
+    frameFrom Frame that should be projected to.
+
+    frameTo Frame on that is projected.
+
+    distTransMat Distance matrix that contains the distance transform values.
+
+    takeValuesFromDistTrans Take the distance from the reprojected coordinates.
+
+    camera Camera matrix.
+
+    edgeDistanceBoundaries Boundaries for edge classification: best, good, worse.
+
+    result Stores result in dictionary: key = frameTo.uid, value = see return value
+
+    Returns matrix that contains the result of the reprojection.
+    1 channel: best with distance <= edgeDistanceLowerBoundary
+    2 channel: good with edgeDistanceLowerBoundary < distance <= edgeDistanceUpperBoundary
+    3 channel: worse with distance > edgeDistanceUpperBoundary
+    '''
+    if not frameFrom.isValid():
+        raise ValueError('Invalid frame from.')
+
+    if not frameTo.isValid():
+        raise ValueError('Invalid frame to.')
+
+    if camera is None:
+        raise ValueError('Invalid camera.')
+
+    if camera.depthScaleFactor() == 0:
+        raise ValueError('Invalid depth scale factor.')
+
+    if distTransMat is None:
+        distTransMat = cv.distanceTransform(255 - frameTo.mask, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+
+    h, w = frameFrom.mask.shape
+    reprojectedEdges = np.zeros((h, w, 3))
+
+    for u in range(0, w):
+        for v in range(0, h):
+
+            if frameFrom.mask.item(v, u) == 0:
+                continue
+
+            if frameFrom.depth.item(v, u) == 0:
+                continue
+
+            z = np.float64(frameFrom.depth.item(v, u)) / np.float64(camera.depthScaleFactor())
+
+            if z == 0:
+                continue
+
+            # project to world coordinate system
+            X = (u - camera.cx()) * z / camera.fx()
+            Y = (v - camera.cy()) * z / camera.fy()
+            # rotate, translate to other frame
+            p1 = frameFrom.T().item((0, 0)) * X + frameFrom.T().item((0, 1)) * Y + frameFrom.T().item((0, 2)) * z + frameFrom.T().item((0, 3))
+            p2 = frameFrom.T().item((1, 0)) * X + frameFrom.T().item((1, 1)) * Y + frameFrom.T().item((1, 2)) * z + frameFrom.T().item((1, 3))
+            p3 = frameFrom.T().item((2, 0)) * X + frameFrom.T().item((2, 1)) * Y + frameFrom.T().item((2, 2)) * z + frameFrom.T().item((2, 3))
+            q1 = frameTo.invT().item((0, 0)) * p1 + frameTo.invT().item((0, 1)) * p2 + frameTo.invT().item((0, 2)) * p3 + frameTo.invT().item((0, 3))
+            q2 = frameTo.invT().item((1, 0)) * p1 + frameTo.invT().item((1, 1)) * p2 + frameTo.invT().item((1, 2)) * p3 + frameTo.invT().item((1, 3))
+            q3 = frameTo.invT().item((2, 0)) * p1 + frameTo.invT().item((2, 1)) * p2 + frameTo.invT().item((2, 2)) * p3 + frameTo.invT().item((2, 3))
+            # project found 3d point Q back to the image plane
+            U = (q1 / q3) * camera.fx() + camera.cx()
+            V = (q2 / q3) * camera.fy() + camera.cy()
+            # boundary check
+            if U < 0 or V < 0 or U > (w-1) or V > (h-1):
+                continue
+
+            distVal = getInterpolatedElement(distTransMat, U, V)
+        
+            poi = np.array([u, v])
+
+            if takeValuesFromDistTrans:
+                poi = np.array([int(U), int(V)])
+
+            edgeDistanceLowerBoundary = edgeDistanceBoundaries[0]
+            edgeDistanceUpperBoundary = edgeDistanceBoundaries[1]
+
+            if distVal <= edgeDistanceLowerBoundary:
+                reprojectedEdges.itemset((poi[1], poi[0], 0), reprojectedEdges.item((poi[1], poi[0], 0)) + 1)
+            elif distVal > edgeDistanceLowerBoundary and distVal <= edgeDistanceUpperBoundary:
+                reprojectedEdges.itemset((poi[1], poi[0], 1), reprojectedEdges.item((poi[1], poi[0], 1)) + 1)
+            elif distVal > edgeDistanceUpperBoundary:
+                reprojectedEdges.itemset((poi[1], poi[0], 2), reprojectedEdges.item((poi[1], poi[0], 2)) + 1)
+
+    if result is not None:
+        result[frameTo.uid] = reprojectedEdges
+
+    return reprojectedEdges
