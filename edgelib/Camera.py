@@ -153,6 +153,50 @@ class Camera:
         except Exception as e:
             raise e
 
+    def setFx(self, val: float = None):
+        '''
+        Set new value.
+
+        val New value.
+        '''
+        if val is None or val <= 0:
+            raise ValueError('Invalid focal length.')
+
+        self.__cameraMatrix.itemset((0, 0), val)
+
+    def setFy(self, val: float = None):
+        '''
+        Set new value.
+
+        val New value.
+        '''
+        if val is None or val <= 0:
+            raise ValueError('Invalid focal length.')
+
+        self.__cameraMatrix.itemset((1, 1), val)
+
+    def setCx(self, val: float = None):
+        '''
+        Set new value.
+
+        val New value.
+        '''
+        if val is None or val <= 0:
+            raise ValueError('Invalid principal point.')
+
+        self.__cameraMatrix.itemset((0, 2), val)
+
+    def setCy(self, val: float = None):
+        '''
+        Set new value.
+
+        val New value.
+        '''
+        if val is None or val <= 0:
+            raise ValueError('Invalid principal point.')
+
+        self.__cameraMatrix.itemset((1, 2), val)
+
     def fx(self) -> float:
         '''
         Focal length x.
