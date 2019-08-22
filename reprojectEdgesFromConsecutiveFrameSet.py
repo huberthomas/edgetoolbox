@@ -4,12 +4,14 @@ import time
 import os
 import sys
 import cv2 as cv
+import matplotlib.pyplot as plt
 from edgelib.TumGroundTruthHandler import TumGroundTruthHandler
 from edgelib.EdgeMatcher import EdgeMatcher, EdgeMatcherMode, EdgeMatcherFrame
 from edgelib.Camera import Camera
 from edgelib import Utilities
-import matplotlib.pyplot as plt
-
+from edgelib import ImageProcessing
+from edgelib import Canny
+import numpy as np
 '''
 from edgelib import Canny
 import numpy as np
@@ -41,6 +43,7 @@ plt.imshow(nanEdge, cmap='gray')
 plt.show()
 exit(0)
 '''
+
 
 def checkInputParameter(args: any) -> any:
     '''
@@ -113,7 +116,9 @@ def parseArgs() -> any:
     parser.add_argument('-u', '--upperEdgeDistanceBoundary', type=float, default=5, help='Edges are counted as worse above this reprojected edge distance.')
     parser.add_argument('-p', '--projectionMode', type=int, choices=[EdgeMatcherMode.REPROJECT, EdgeMatcherMode.BACKPROJECT, EdgeMatcherMode.CENTERPROJECT],
                         default=1, help='Set the frame projection mode. 1 is backprojection, 2 is reprojection and 3 is center frame projection. Default is 1.')
-    # parser.add_argument('-s', '--scale', type=int, choices=[0,1,2], default=0, help='Set the scale level. 0 = 1:1, 1 = 1:2, 2 = 1:4')
+    parser.add_argument('-id', '--inpaintDepth', type=int, choices=[0, 1, 2], default=0,
+                        help='Fill out undefined depth regions by inpainting. 0 ... off, 1 ... CV_INPAINT_NS, 2 ... CV_INPAINT_TELEA. Default is 0.')
+    parser.add_argument('-s', '--scale', type=int, choices=[0,1,2], default=0, help='Set the scale level. 0 = 1:1, 1 = 1:2, 2 = 1:4')
 
     return parser.parse_args()
 
@@ -137,11 +142,11 @@ def main() -> None:
         camera = Camera()
         camera.loadFromFile(args.camCalibFile)
 
-        # for _ in range(0, args.scale):
-        #     camera.setFx(camera.fx()/2.0)
-        #     camera.setFy(camera.fy()/2.0)
-        #     camera.setCx(camera.cx()/2.0)
-        #     camera.setCy(camera.cy()/2.0)
+        for _ in range(0, args.scale):
+            camera.setFx(camera.fx()/2.0)
+            camera.setFy(camera.fy()/2.0)
+            camera.setCx(camera.cx()/2.0)
+            camera.setCy(camera.cy()/2.0)
 
         logging.info('Loading data from associated ground truth file.')
         gtHandler = TumGroundTruthHandler()
@@ -156,6 +161,8 @@ def main() -> None:
         edgeMatcher.setEdgeDistanceBoundaries(args.lowerEdgeDistanceBoundary, args.upperEdgeDistanceBoundary)
 
         frameFileNames = []
+        f = open(os.path.join(args.outputDir, 'records.txt'), 'w')
+        f.write('# timestamp d<=%d %d<d<=%d d>%d\n'%(args.lowerEdgeDistanceBoundary, args.lowerEdgeDistanceBoundary, args.upperEdgeDistanceBoundary, args.upperEdgeDistanceBoundary))
         for a in gtHandler.data():
             logging.info('Loading frame at timestamp %f (RGB: %s)' % (a.gt.timestamp, a.rgb))
 
@@ -166,10 +173,16 @@ def main() -> None:
             depth = cv.imread(os.path.join(args.depthDir, a.depth), cv.IMREAD_UNCHANGED)
             mask = cv.imread(os.path.join(args.maskDir, a.rgb), cv.IMREAD_GRAYSCALE)
 
-            # for _ in range(0, args.scale):
-            #     rgb = cv.pyrDown(rgb)
-            #     depth = cv.pyrDown(depth)
-            #     mask = cv.pyrDown(mask)
+            if args.inpaintDepth == 1:
+                depth = ImageProcessing.reconstructDepthImg(depth, 5, cv.INPAINT_NS)
+            elif args.inpaintDepth == 2:
+                depth = ImageProcessing.reconstructDepthImg(depth, 5, cv.INPAINT_TELEA)
+
+            for _ in range(0, args.scale):
+                rgb = cv.resize(rgb, (0,0), fx=0.5, fy=0.5) #cv.pyrDown(rgb)
+                depth = cv.resize(depth, (0,0), fx=0.5, fy=0.5) #cv.pyrDown(depth)
+                mask = Canny.canny(rgb, 50, 100, 3, True, 3) #cv.resize(mask, (0,0), fx=0.5, fy=0.5) #cv.pyrDown(mask) 
+                #_, mask = cv.threshold(mask, 0, 255, cv.THRESH_BINARY)
 
             frame = EdgeMatcherFrame()
             frame.uid = a.gt.timestamp
@@ -177,12 +190,12 @@ def main() -> None:
             frame.depth = depth
             frame.mask = mask
             frame.setT(a.gt.q, a.gt.t)
-            
-            meaningfulEdges = edgeMatcher.reprojectEdgesToConsecutiveFrameSet(frame, args.projectionMode, args.outputDir)
+
+            meaningfulEdges, worseEdges = edgeMatcher.reprojectEdgesToConsecutiveFrameSet(frame, args.projectionMode, args.outputDir)
 
             if meaningfulEdges is None:
                 continue
-
+            
             # determine correct filename
             if args.projectionMode == EdgeMatcherMode.REPROJECT:
                 frameFileName = frameFileNames[len(frameFileNames) - 1]
@@ -194,6 +207,11 @@ def main() -> None:
                 raise ValueError('Unknown projection mode "%d".' % (args.projectionMode))
 
             # save result
+            numBest = len(meaningfulEdges[np.where(meaningfulEdges > 0)])
+            numWorse = len(worseEdges[np.where(worseEdges > 0)])
+
+            f.write('%s %d %d %d\n'%(frameFileName, numBest, 0, numWorse))
+            f.flush()
             cv.imwrite(os.path.join(args.outputDir, frameFileName), meaningfulEdges * 255)
             logging.info('Saving "%s"' % (os.path.join(args.outputDir, frameFileName)))
             frameFileNames.pop(0)
@@ -201,6 +219,7 @@ def main() -> None:
         elapsedTime = time.time() - startTime
         print('\n')
         logging.info('Finished in %.4f sec' % (elapsedTime))
+        f.close()
         sys.exit(0)
     except Exception as e:
         logging.error(e)
@@ -210,3 +229,10 @@ def main() -> None:
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s:\t%(message)s', level=logging.DEBUG)
     main()
+
+
+'''
+python reprojectEdgesFromConsecutiveFrameSet.py -g '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/groundtruth_associated.txt' -r '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/rgb' -d '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/depth_inpaint_cv_talea' -m '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/all/rgbd_dataset_freiburg2_xyz/level0/canny' -c '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/camera_calib_schenk.yml' -o '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/em_output' -p 3 -f 4 -l 1 -u 1
+python reprojectEdgesFromConsecutiveFrameSet.py -g '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/groundtruth_associated.txt' -r '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/rgb' -d '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/depth' -m '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/rgb/bdcn_40k_thinned' -c '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/camera_calib_schenk.yml' -o '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/em_output' -p 3 -f 4 -l 1 -u 1 -id 2
+python reprojectEdgesFromConsecutiveFrameSet.py -g '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/groundtruth_associated.txt' -r '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/rgb' -d '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/depth' -m '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/mask/canny' -c '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/camera_calib_schenk.yml' -o '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/rgbd_dataset_freiburg1_xyz/em_output_canny' -p 3 -f 4 -l 1 -u 1 -id 2
+'''
