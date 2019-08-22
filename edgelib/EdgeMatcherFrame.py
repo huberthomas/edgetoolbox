@@ -16,7 +16,7 @@ class EdgeMatcherFrame(Frame):
 
         # key = uid, value = meaningful edge result
         self.projectedEdgeResults = {}
-        self.meaningfulEdges = None
+        self.__meaningfulEdges = None
     
     def printProjectedEdgeResults(self) -> None:
         '''
@@ -53,7 +53,10 @@ class EdgeMatcherFrame(Frame):
 
     def getMeaningfulEdges(self) -> np.ndarray:
         '''
-        Get meaningful edges of the current frame
+        Get meaningful edges of the current frame.
+        The intermediate results are weighted (sinoid function) by its hit quote and added together.
+
+        Returns probability of a meaningful edge per pixel [0 ... 1]. 1 is good, 0 is no edge.
         '''
         total = len(self.projectedEdgeResults)
 
