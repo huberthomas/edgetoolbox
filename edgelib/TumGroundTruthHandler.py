@@ -81,10 +81,14 @@ class TumGroundTruthHandler:
             counter = 0
             total = len(self.__associations)
             for a in self.__associations.values():
-                f.write('%.9f %.13f %.13f %.13f %.13f %.13f %.13f %.13f %s %s\n' % (a.gt.timestamp,
+                f.write('%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %s %s\n' % (a.gt.timestamp,
                                                              a.gt.t[0], a.gt.t[1], a.gt.t[2],
                                                              a.gt.q[1], a.gt.q[2], a.gt.q[3], a.gt.q[0],
                                                              a.rgb, a.depth))
+                # f.write('%.9f %.13f %.13f %.13f %.13f %.13f %.13f %.13f %s %s\n' % (a.gt.timestamp,
+                #                                              a.gt.t[0], a.gt.t[1], a.gt.t[2],
+                #                                              a.gt.q[1], a.gt.q[2], a.gt.q[3], a.gt.q[0],
+                #                                              a.rgb, a.depth))
                 counter = counter + 1
                 self.progress(counter / total * 100)
 
