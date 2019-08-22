@@ -208,3 +208,96 @@ def rescale(val: float = 0, minVal: float = 0, maxVal: float = 0, newMinVal: flo
     Returns rescaled value.
     '''
     return ((newMaxVal - newMinVal)/(maxVal - minVal)) * (val - maxVal) + newMaxVal
+
+def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
+    '''
+    Create tile view of images located in defined directory.
+
+    dirList Stringlist of image directories.
+
+    htmlFilePath HTML output file that contains tile view of found images.
+
+    baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/test_dataset'
+    subDirs = [
+        os.path.join(baseDir, 'hdr_fusion', 'flicker_synthetic', 'flicker_1'),
+        os.path.join(baseDir, 'hdr_fusion', 'smooth_synthetic', 'flicker_2'),
+        os.path.join(baseDir, 'nyu_depth_v2', 'basements', 'basement_001c'),
+        os.path.join(baseDir, 'nyu_depth_v2', 'cafe', 'cafe_0001c'),
+        os.path.join(baseDir, 'nyu_depth_v2', 'classrooms', 'classroom_0014'),
+        os.path.join(baseDir, 'tum', 'rgbd_dataset_freiburg1_desk', 'rgb'),
+        os.path.join(baseDir, 'tum', 'rgbd_dataset_freiburg1_xyz', 'rgb'),
+        os.path.join(baseDir, 'tum', 'rgbd_dataset_freiburg2_xyz', 'rgb'),
+    ]
+    htmlOutputFileNames = [
+        'flicker_1',
+        'flicker_2',
+        'basement_001c',
+        'cafe_0001c',
+        'classroom_0014',
+        'rgbd_dataset_freiburg1_desk',
+        'rgbd_dataset_freiburg1_xyz',
+        'rgbd_dataset_freiburg2_xyz',
+    ]
+
+    for i in range(0, len(subDirs)):
+        baseSubDir = subDirs[i]
+        inputDirs = [
+            baseSubDir,
+            os.path.join(baseSubDir, 'bdcn'),
+            os.path.join(baseSubDir, 'bdcn_40k'),
+            os.path.join(baseSubDir, 'bdcn_30k'),
+            os.path.join(baseSubDir, 'bdcn_20k'),
+            os.path.join(baseSubDir, 'bdcn_10k'),
+            os.path.join(baseSubDir, 'bdcn_5k'),
+            os.path.join(baseSubDir, 'bdcn_1k'),
+        ]
+
+        createHtmlTileOutput(inputDirs, os.path.join(baseDir, '%s.html'%(os.path.basename(htmlOutputFileNames[i]))))
+    '''
+    data = []
+    counter = 0
+    for i in range(0, len(dirList)):
+        dirPath = dirList[i]
+        fileNames = getFileNames(dirPath)
+        counter = len(fileNames)
+
+        data.append([])
+        for fileName in fileNames:
+            data[i].append(os.path.join(dirPath, fileName))
+    
+
+    th = '<tr>'
+    for dirName in dirList:
+        th += '<th>%s</th>'%(os.path.basename(dirName))
+    th += '</tr>'
+    
+    tr = ''
+    for i in range(0, counter):
+        tr += '<tr>'
+        for j in range(0, len(dirList)):
+            link = data[j][i]
+            tr += '<td>'
+            tr += '<a href="%s" target="_blank"><img src="%s" alt="%s" title="%s" style="calc(100%% / 7)"></a>'%(link, link, os.path.basename(link), os.path.join(os.path.basename(dirList[j]), os.path.basename(link)))
+            tr += '</td>'
+        tr += '</tr>'
+
+    table = '<table style="width:100%">'
+    table += th
+    table += tr
+    table += '</table>'
+
+    html = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+    %s
+    </body>
+    </html>
+    '''%(table)
+
+    f = open(htmlFilePath, 'w')
+    f.write(html)
+    f.close()
