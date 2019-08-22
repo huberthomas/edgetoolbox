@@ -60,8 +60,8 @@ def parseArgs() -> any:
     parser.add_argument('-o', '--outputDir', type=str, default=None, required=True, help='Image output directory.')
     parser.add_argument('-k', '--kernelSize', type=int, default=3, help='Set the Sobel kernel size. Default 3.')
     parser.add_argument('-bk', '--blurKernelSize', type=int, default=3, help='Set the blur kernel size. Default 3.')
-    parser.add_argument('-t1', '--threshold1', type=int, default=100, help='First threshold for the hysteresis process. Default 100.')
-    parser.add_argument('-t2', '--threshold2', type=int, default=150, help='Second threshold for the hysteresis process. Default 150')
+    parser.add_argument('-t1', '--threshold1', type=int, default=50, help='First threshold for the hysteresis process. Default 100.')
+    parser.add_argument('-t2', '--threshold2', type=int, default=100, help='Second threshold for the hysteresis process. Default 150')
     parser.add_argument('-ha', '--highAccuracy', default=True, action='store_true', help='High accuracy flag. Default true.')
     parser.add_argument('-t', '--threads', type=int, default=mp.cpu_count(), help='Number of spawned threads to process data. Default is maximum number.')
 
@@ -94,6 +94,8 @@ def processAndSaveCanny(imgFilePath: str = None,
     '''
     try:
         img = cv.imread(imgFilePath)
+        #img = cv.pyrDown(img)
+        #img = cv.pyrDown(img)
         edge = Canny.canny(img, threshold1, threshold2, kernelSize, highAccuracy, blurKernelSize)
         cv.imwrite(outFilePath, edge)
     except Exception as e:
@@ -109,6 +111,24 @@ def main() -> None:
         args = checkInputParameter(args)
         print(Utilities.argsToStr(args))
 
+        #baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/'
+        #outputBaseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/all'
+        #inputDirs = [
+        #   'rgbd_dataset_freiburg1_desk',
+        #   'rgbd_dataset_freiburg1_desk2',
+        #   'rgbd_dataset_freiburg1_plant',
+        #   'rgbd_dataset_freiburg1_room',
+        #   'rgbd_dataset_freiburg1_rpy',
+        #   'rgbd_dataset_freiburg1_xyz',
+        #   'rgbd_dataset_freiburg2_desk',
+        #   'rgbd_dataset_freiburg2_xyz',
+        #   'rgbd_dataset_freiburg3_long_office_household',
+        #] 
+
+        # for i in range(0, len(inputDirs)):
+        #     args.inputDir = os.path.join(baseDir, inputDirs[i], 'rgb')
+        #     args.outputDir = os.path.join(outputBaseDir, inputDirs[i], 'level2', 'canny')
+
         imgFileNames = Utilities.getFileNames(args.inputDir, ['png', 'jpg', 'jpeg'])
 
         param = []
@@ -123,12 +143,12 @@ def main() -> None:
             outFilePath = os.path.join(args.outputDir, fileName)
 
             param.append((imgFilePath,
-                          outFilePath,
-                          args.threshold1,
-                          args.threshold2,
-                          args.kernelSize,
-                          args.highAccuracy,
-                          args.blurKernelSize))
+                        outFilePath,
+                        args.threshold1,
+                        args.threshold2,
+                        args.kernelSize,
+                        args.highAccuracy,
+                        args.blurKernelSize))
 
         pool = mp.Pool(processes=args.threads)
 
