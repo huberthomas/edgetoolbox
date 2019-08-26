@@ -215,7 +215,6 @@ def getGradientInformation(img: np.ndarray = None) -> (np.ndarray, np.ndarray, n
 
 def projectEdges(frameFrom: EdgeMatcherFrame = None, 
                  frameTo: EdgeMatcherFrame = None, 
-                 distTransMat: np.ndarray = None, 
                  takeValuesFromDistTrans: bool = False, 
                  camera: Camera = None, 
                  edgeDistanceBoundaries: tuple = (0,0),
@@ -254,8 +253,7 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     if camera.depthScaleFactor() == 0:
         raise ValueError('Invalid depth scale factor.')
 
-    if distTransMat is None:
-        distTransMat = cv.distanceTransform(255 - frameTo.boundaries(), cv.DIST_L2, cv.DIST_MASK_PRECISE)
+    distTransMat = frameTo.distanceTransform()
 
     h, w = frameFrom.boundaries().shape
     reprojectedEdges = np.zeros((h, w, 3))

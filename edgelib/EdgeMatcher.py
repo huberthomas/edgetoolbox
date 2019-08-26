@@ -128,7 +128,7 @@ class EdgeMatcher:
 
         h, w = frame.boundaries().shape
         meaningfulEdges = np.zeros((h, w, 3))
-        distTransMat = cv.distanceTransform(255 - frame.boundaries(), cv.DIST_L2, cv.DIST_MASK_PRECISE)
+        distTransMat = frame.distanceTransform()
 
         try:
             for i in range(0, self.__frameOffset):
@@ -145,7 +145,7 @@ class EdgeMatcher:
                 tmpFrame = self.__frameSet[i]
                 tmpFrame.setBoundaries(mask)
 
-                projectedEdges = ImageProcessing.projectEdges(tmpFrame, frame, distTransMat, True, self.__camera, (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary))
+                projectedEdges = ImageProcessing.projectEdges(tmpFrame, frame, True, self.__camera, (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary))
                 frame.projectedEdgeResults[tmpFrame.uid] = projectedEdges
                 
                 logging.info('Projected %d in %f sec.' % (i, time.time() - start))
@@ -194,19 +194,21 @@ class EdgeMatcher:
         if len(self.__frameSet) <= maxFrameOffset:
             return (None, None)
 
-        destFrameIndex = 0
+        destFrameIndex = -1
 
         if mode == EdgeMatcherMode.BACKPROJECT or mode == EdgeMatcherMode.CENTERPROJECT:
             destFrameIndex = self.__frameOffset
         elif mode == EdgeMatcherMode.REPROJECT:
             destFrameIndex = 0
+        else:
+            raise ValueError('Invalid destination frame index.')
 
         destFrame = self.__frameSet[destFrameIndex]
 
         maxFrameOffset = len(self.__frameSet)
 
         start = time.time()
-        # needed to share result between threads
+        # manager needed to share result between threads
         result = Manager().dict()
         param = []  
 
@@ -217,7 +219,6 @@ class EdgeMatcher:
 
             param.append((destFrame, 
                         self.__frameSet[i], 
-                        None, 
                         False, 
                         self.__camera, 
                         (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary), 
@@ -257,7 +258,6 @@ class EdgeMatcher:
 
             paramRefined.append((tmpDestFrame, 
                             tmpFrameTo,
-                            None,
                             False,
                             self.__camera,
                             (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary),
@@ -423,7 +423,7 @@ class EdgeMatcher:
         else:
             raise ValueError('Unsupported projection mode.')
 
-        distTransMat = cv.distanceTransform(255 - destFrame.boundaries(), cv.DIST_L2, cv.DIST_MASK_PRECISE)
+        distTransMat = destFrame.distanceTransform()
 
         start = time.time()
         # needed to share result between threads
@@ -438,7 +438,6 @@ class EdgeMatcher:
 
             param.append((self.__frameSet[i], 
                         destFrame,
-                        distTransMat, 
                         True, 
                         self.__camera, 
                         (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary), 

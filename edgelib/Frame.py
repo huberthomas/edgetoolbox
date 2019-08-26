@@ -1,6 +1,7 @@
 from typing import List
 import numpy as np
 import sys
+import cv2 as cv
 sys.path.insert(0, 'dependencies/sophus/py/')
 import sophus
 
@@ -20,6 +21,7 @@ class Frame:
         self.__rgb = None
         self.__depth = None
         self.__boundaries = None
+        self.__distanceTransform = None
         # 4x4 transformation matrix
         self.__T = None
         self.__invT = None
@@ -89,7 +91,16 @@ class Frame:
         if boundaries is None:
             raise ValueError('Invalid boundaries file.')
 
+
         self.__boundaries = boundaries
+        self.__distanceTransform = cv.distanceTransform(255 - boundaries, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+
+    def distanceTransform(self) -> np.ndarray:
+        '''
+        Get the distance transform of the boundaries image.
+        '''
+        return self.__distanceTransform
+
 
     def R(self) -> np.ndarray:
         '''
