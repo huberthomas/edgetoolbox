@@ -135,9 +135,9 @@ def main() -> None:
 
             frame = EdgeMatcherFrame()
             frame.uid = a.gt.timestamp
-            frame.rgb = rgb
-            frame.depth = depth
-            frame.mask = mask
+            frame.setRgb(rgb)
+            frame.setDepth(depth)
+            frame.setBoundaries(mask)
             frame.setT(a.gt.q, a.gt.t)
 
             meaningfulEdges = edgeMatcher.reprojectEdgesByAscendingCannyThreshold(frame,

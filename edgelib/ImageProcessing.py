@@ -172,7 +172,7 @@ def getGradientInformation(img: np.ndarray = None) -> (np.ndarray, np.ndarray, n
     
     # multidirectional sobel https://www.researchgate.net/publication/314446743_A_Novel_Approach_for_Color_Image_Edge_Detection_Using_Multidirectional_Sobel_Filter_on_HSV_Color_Space
     # https://pdfs.semanticscholar.org/7e87/b109d5c0205c0fc36a521ef88a860b4b5acf.pdf
-    #tmpRgb = destFrame.depth
+    #tmpRgb = destFrame.depth()
     #tmpRgb = cv.blur(tmpRgb, (blurKernelSize, blurKernelSize))
     #tmpRgb = cv.cvtColor(tmpRgb, cv.COLOR_BGR2HSV)
 
@@ -255,21 +255,21 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
         raise ValueError('Invalid depth scale factor.')
 
     if distTransMat is None:
-        distTransMat = cv.distanceTransform(255 - frameTo.mask, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+        distTransMat = cv.distanceTransform(255 - frameTo.boundaries(), cv.DIST_L2, cv.DIST_MASK_PRECISE)
 
-    h, w = frameFrom.mask.shape
+    h, w = frameFrom.boundaries().shape
     reprojectedEdges = np.zeros((h, w, 3))
 
     for u in range(0, w):
         for v in range(0, h):
 
-            if frameFrom.mask.item(v, u) == 0:
+            if frameFrom.boundaries().item(v, u) == 0:
                 continue
 
-            if frameFrom.depth.item(v, u) == 0:
+            if frameFrom.depth().item(v, u) == 0:
                 continue
 
-            z = np.float64(frameFrom.depth.item(v, u)) / np.float64(camera.depthScaleFactor())
+            z = np.float64(frameFrom.depth().item(v, u)) / np.float64(camera.depthScaleFactor())
 
             if z == 0:
                 continue
@@ -278,12 +278,14 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
             X = (u - camera.cx()) * z / camera.fx()
             Y = (v - camera.cy()) * z / camera.fy()
             # rotate, translate to other frame
-            p1 = frameFrom.T().item((0, 0)) * X + frameFrom.T().item((0, 1)) * Y + frameFrom.T().item((0, 2)) * z + frameFrom.T().item((0, 3))
-            p2 = frameFrom.T().item((1, 0)) * X + frameFrom.T().item((1, 1)) * Y + frameFrom.T().item((1, 2)) * z + frameFrom.T().item((1, 3))
-            p3 = frameFrom.T().item((2, 0)) * X + frameFrom.T().item((2, 1)) * Y + frameFrom.T().item((2, 2)) * z + frameFrom.T().item((2, 3))
-            q1 = frameTo.invT().item((0, 0)) * p1 + frameTo.invT().item((0, 1)) * p2 + frameTo.invT().item((0, 2)) * p3 + frameTo.invT().item((0, 3))
-            q2 = frameTo.invT().item((1, 0)) * p1 + frameTo.invT().item((1, 1)) * p2 + frameTo.invT().item((1, 2)) * p3 + frameTo.invT().item((1, 3))
-            q3 = frameTo.invT().item((2, 0)) * p1 + frameTo.invT().item((2, 1)) * p2 + frameTo.invT().item((2, 2)) * p3 + frameTo.invT().item((2, 3))
+            frameFromT = frameFrom.T()
+            frameToInvT = frameTo.invT()
+            p1 = frameFromT.item((0, 0)) * X + frameFromT.item((0, 1)) * Y + frameFromT.item((0, 2)) * z + frameFromT.item((0, 3))
+            p2 = frameFromT.item((1, 0)) * X + frameFromT.item((1, 1)) * Y + frameFromT.item((1, 2)) * z + frameFromT.item((1, 3))
+            p3 = frameFromT.item((2, 0)) * X + frameFromT.item((2, 1)) * Y + frameFromT.item((2, 2)) * z + frameFromT.item((2, 3))
+            q1 = frameToInvT.item((0, 0)) * p1 + frameToInvT.item((0, 1)) * p2 + frameToInvT.item((0, 2)) * p3 + frameToInvT.item((0, 3))
+            q2 = frameToInvT.item((1, 0)) * p1 + frameToInvT.item((1, 1)) * p2 + frameToInvT.item((1, 2)) * p3 + frameToInvT.item((1, 3))
+            q3 = frameToInvT.item((2, 0)) * p1 + frameToInvT.item((2, 1)) * p2 + frameToInvT.item((2, 2)) * p3 + frameToInvT.item((2, 3))
             # project found 3d point Q back to the image plane
             U = (q1 / q3) * camera.fx() + camera.cx()
             V = (q2 / q3) * camera.fy() + camera.cy()

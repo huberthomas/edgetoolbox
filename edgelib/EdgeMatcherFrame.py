@@ -43,7 +43,7 @@ class EdgeMatcherFrame(Frame):
         if not self.isValid():
             raise ValueError('Invalid frame data.')
 
-        h, w = self.mask.shape
+        h, w = self.__boundaries.shape
         concatEdges = np.zeros((h, w, 3))
 
         for projectedResult in self.projectedEdgeResults.values():
@@ -63,7 +63,7 @@ class EdgeMatcherFrame(Frame):
         if total == 0:
             return None
 
-        h, w = self.mask.shape
+        h, w = self.boundaries().shape
         meaningfulEdges = np.zeros((h, w), np.float64)
 
         for projectedEdges in self.projectedEdgeResults.values():

@@ -17,9 +17,9 @@ class Frame:
         '''
         self.uid = None
         # images
-        self.rgb = None
-        self.depth = None
-        self.mask = None
+        self.__rgb = None
+        self.__depth = None
+        self.__boundaries = None
         # 4x4 transformation matrix
         self.__T = None
         self.__invT = None
@@ -30,12 +30,66 @@ class Frame:
 
         Returns formatted class parameters.
         '''
-        out = 'RGB: %dx%d\n' % (self.rgb.shape[:2])
-        out += 'Depth: %dx%d\n' % (self.depth.shape[:2])
-        out += 'Mask: %dx%d\n' % (self.mask.shape[:2])
+        if not self.isValid():
+            raise ValueError('Invalid frame data.')
+
+        out = 'RGB: %dx%d\n' % (self.__rgb.shape[:2])
+        out += 'Depth: %dx%d\n' % (self.__depth.shape[:2])
+        out += 'Mask: %dx%d\n' % (self.__boundaries.shape[:2])
         out += 'T: %s\nT⁻¹%s\n' % (np.array2string(self.__T), np.array2string(self.__invT))
 
         return out
+
+    def rgb(self) -> np.ndarray:
+        '''
+        Get the RGB file.
+        '''
+        return self.__rgb
+
+    def setRgb(self, rgb: np.ndarray = None) -> None:
+        '''
+        Set the RGB image file.
+
+        rgb RGB file.
+        '''
+        if rgb is None:
+            raise ValueError('Invalid RGB file.')
+
+        self.__rgb = rgb
+
+    def depth(self) -> np.ndarray:
+        '''
+        Get the depth file.
+        '''
+        return self.__depth
+
+    def setDepth(self, depth: np.ndarray = None) -> None:
+        '''
+        Set the depth image file.
+
+        depth Depth file.
+        '''
+        if depth is None:
+            raise ValueError('Invalid depth file.')
+
+        self.__depth = depth
+
+    def boundaries(self) -> np.ndarray:
+        '''
+        Get the boundaries file.
+        '''
+        return self.__boundaries
+
+    def setBoundaries(self, boundaries: np.ndarray = None) -> None:
+        '''
+        Set the boundaries image file.
+
+        boundaries Boundaries file.
+        '''
+        if boundaries is None:
+            raise ValueError('Invalid boundaries file.')
+
+        self.__boundaries = boundaries
 
     def R(self) -> np.ndarray:
         '''
@@ -133,13 +187,13 @@ class Frame:
         '''
         Check if frame is valid.
         '''
-        if(self.rgb is None or self.depth is None or self.mask is None):
+        if(self.__rgb is None or self.__depth is None or self.__boundaries is None):
             return False
 
-        if(type(self.rgb) is not np.ndarray or type(self.depth) is not np.ndarray or type(self.mask) is not np.ndarray):
+        if(type(self.__rgb) is not np.ndarray or type(self.__depth) is not np.ndarray or type(self.__boundaries) is not np.ndarray):
             return False
 
-        if(self.rgb.size == 0 or self.depth.size == 0 or self.mask.size == 0):
+        if(self.__rgb.size == 0 or self.__depth.size == 0 or self.__boundaries.size == 0):
             return False
 
         return True
