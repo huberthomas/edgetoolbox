@@ -5,6 +5,7 @@ import numpy as np
 import cv2 as cv
 import multiprocessing as mp
 from multiprocessing import Manager
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from typing import List
 from enum import IntEnum
@@ -15,6 +16,8 @@ from . import Canny
 from scipy import signal
 from .EdgeMatcherFrame import EdgeMatcherFrame
 import copy
+from . import Utilities
+
 
 class EdgeMatcherMode(IntEnum):
     '''
@@ -26,6 +29,7 @@ class EdgeMatcherMode(IntEnum):
     BACKPROJECT = 2
     # back to front and front to back projection to a center frame (re- and backproject)
     CENTERPROJECT = 3
+
 
 class EdgeMatcher:
     '''
@@ -147,7 +151,7 @@ class EdgeMatcher:
 
                 projectedEdges = ImageProcessing.projectEdges(tmpFrame, frame, True, self.__camera, (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary))
                 frame.projectedEdgeResults[tmpFrame.uid] = projectedEdges
-                
+
                 logging.info('Projected %d in %f sec.' % (i, time.time() - start))
 
                 # accumulate values
@@ -169,6 +173,190 @@ class EdgeMatcher:
         return meaningfulEdges
 
     def reprojectEdgesToConsecutiveFrameSet(self, frame: EdgeMatcherFrame = None, mode: EdgeMatcherMode = EdgeMatcherMode.REPROJECT, outputDir: str = None) -> (np.ndarray, np.ndarray):
+        '''
+        '''
+        if not frame.isValid():
+            raise ValueError('Invalid frame.')
+
+        # fill frame set
+        self.__frameSet.append(frame)
+
+        maxFrameOffset = self.__frameOffset
+
+        if mode == EdgeMatcherMode.CENTERPROJECT:
+            maxFrameOffset = 2 * self.__frameOffset
+
+        if len(self.__frameSet) <= maxFrameOffset:
+            return (None, None)
+
+        destFrameIndex = -1
+
+        if mode == EdgeMatcherMode.BACKPROJECT or mode == EdgeMatcherMode.CENTERPROJECT:
+            destFrameIndex = self.__frameOffset
+        elif mode == EdgeMatcherMode.REPROJECT:
+            destFrameIndex = 0
+        else:
+            raise ValueError('Invalid destination frame index.')
+
+        maxFrameOffset = len(self.__frameSet)
+        scales = [1.0, 0.5, 0.25]
+        edgeThresMin = 50
+        edgeThresMax = 100
+        edgeKernelSize = 3
+        blurKernelSize = 5
+        manager = Manager()
+
+        frameFrom = self.__frameSet[destFrameIndex]
+        frameFrom.setBoundaries(Canny.canny(frameFrom.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize))
+        
+        h, w = frameFrom.boundaries().shape[:2]
+
+        reprojectedEdgesList = manager.list()
+
+        start = time.time()
+        scaledThreadParam = []
+
+        for i in range(0, maxFrameOffset):
+            # skip own projection
+            if i == destFrameIndex:
+                continue
+
+            frameTo = self.__frameSet[i]
+            scaledThreadParam.append((frameFrom, frameTo, self.__camera, (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary), scales, reprojectedEdgesList))
+
+        pool = mp.Pool(processes=self.__numOfThreads)
+        pool.starmap(ImageProcessing.projectMultiscaleEdges, scaledThreadParam)
+        pool.terminate()
+
+        logging.info('Projected %d scaled frames in %f sec.' % (len(scales), time.time() - start))
+
+        # sum up and weight scaled results
+        scaledMeaningfulEdges = np.zeros((h, w))
+        for scaledResultList in reprojectedEdgesList:
+            for scaledResult in scaledResultList:
+                best, good, worse = cv.split(scaledResult)
+                numBest = np.sum(best)
+                numGood = np.sum(good)
+                numWorse = np.sum(worse)
+
+                # linear weight function
+                weight = (numBest + numGood) / (numBest + numGood + numWorse)
+                # sinoid weight function
+                #weight = np.sin(Utilities.rescale(weight, 0, 1, 0, np.pi/2.0))
+                tmpMeaningfulEdges = cv.add(best, good)
+                tmpMeaningfulEdges *= weight
+                scaledMeaningfulEdges = cv.add(scaledMeaningfulEdges, tmpMeaningfulEdges)
+
+        scaledMeaningfulEdges /= (len(reprojectedEdgesList) * len(scales))
+        # end of sum up and weight scaled results
+        frameFrom.scaledMeaningfulEdges = scaledMeaningfulEdges
+
+        '''
+        # refine with only precalculated meaningful edges
+        _, scaledMeaningfulEdges = cv.threshold(scaledMeaningfulEdges, 0, 255, cv.THRESH_BINARY)
+        
+        refinedMeaningfulEdgesList = []
+        for i in range(0, maxFrameOffset):
+            if i == destFrameIndex:
+                continue
+
+            frameTo = self.__frameSet[i]
+            
+            if frameTo.scaledMeaningfulEdges is None:
+                continue
+
+            _, frameToBoundaries = cv.threshold(frameTo.scaledMeaningfulEdges, 0, 255, cv.THRESH_BINARY)
+            frameToDistanceTransform = cv.distanceTransform(255 - frameToBoundaries.astype(np.uint8), cv.DIST_L2, cv.DIST_MASK_PRECISE)
+
+            refinedMeaningfulEdges = np.zeros((h, w, 3))
+            for u in range(0, w):
+                for v in range(0, h):
+                    if frameFrom.scaledMeaningfulEdges.item((v, u)) == 0 or frameFrom.depth().item((v, u)) == 0:
+                        continue
+
+                    z = np.float64(frameFrom.depth().item((v, u))) / np.float64(self.__camera.depthScaleFactor())
+                    # project to world
+                    P = ImageProcessing.projectToWorld(self.__camera, np.asarray((u, v, z), np.float64))
+                    # transform
+                    Q = np.dot(frameTo.invT_R(), np.dot(frameFrom.R(), P) + frameFrom.t()) + frameTo.invT_t()
+                    # reproject to image plane
+                    q = np.dot(self.__camera.cameraMatrix(), Q)
+                    q /= q[2]
+                    # boundary check
+                    if q[0] < 0 or q[1] < 0 or q[0] > (w - 1) or q[1] > (h - 1):
+                        # print(q)
+                        continue
+
+                    distVal = ImageProcessing.getInterpolatedElement(frameToDistanceTransform, q[0], q[1])
+
+                    poi = np.array([u, v])
+
+                    if distVal <= self.__edgeDistanceLowerBoundary:
+                        refinedMeaningfulEdges.itemset((poi[1], poi[0], 0), refinedMeaningfulEdges.item((poi[1], poi[0], 0)) + 1)
+                    elif distVal > self.__edgeDistanceLowerBoundary and distVal <= self.__edgeDistanceUpperBoundary:
+                        refinedMeaningfulEdges.itemset((poi[1], poi[0], 1), refinedMeaningfulEdges.item((poi[1], poi[0], 1)) + 1)
+                    elif distVal > self.__edgeDistanceUpperBoundary:
+                        refinedMeaningfulEdges.itemset((poi[1], poi[0], 2), refinedMeaningfulEdges.item((poi[1], poi[0], 2)) + 1)
+
+            refinedMeaningfulEdgesList.append(refinedMeaningfulEdges)
+        
+        if len(refinedMeaningfulEdgesList) < self.__frameOffset:
+            self.__frameSet.pop(0)
+            return (None, None)
+
+        meaningfulEdges = np.zeros((h, w))
+        print('Refining %d frames.'%(len(refinedMeaningfulEdgesList)))
+        counter = 0
+        for refinedMeaningfulEdges in refinedMeaningfulEdgesList:
+            best, good, worse = cv.split(refinedMeaningfulEdges)
+            numBest = np.sum(best)
+            numGood = np.sum(good)
+            numWorse = np.sum(worse)
+
+            # linear weight function
+            weight = (numBest + numGood) / (numBest + numGood + numWorse)
+            # sinoid weight function
+            #weight = np.sin(Utilities.rescale(weight, 0, 1, 0, np.pi/2.0))
+            tmpMeaningfulEdges = cv.add(best, good)
+            tmpMeaningfulEdges *= weight
+
+            fig = plt.figure(counter)
+            plt.subplot(211)
+            plt.imshow(scaledMeaningfulEdges, cmap='hot')
+            plt.subplot(212)
+            plt.imshow(tmpMeaningfulEdges, cmap='hot')
+            counter += 1
+
+            meaningfulEdges = cv.add(meaningfulEdges, tmpMeaningfulEdges)
+            
+        fig = plt.figure(len(refinedMeaningfulEdgesList) + 1)
+        plt.subplot(211)
+        plt.axis('off')
+        plt.imshow(frameFrom.scaledMeaningfulEdges, cmap='hot')
+        plt.subplot(212)
+        plt.axis('off')
+        plt.imshow(meaningfulEdges, cmap='hot')
+        plt.show()
+        '''
+
+        # cm_hot = mpl.cm.get_cmap('hot')
+        # im = cm_hot(frameFrom.scaledMeaningfulEdges)
+        # im = np.uint8(im * 255)
+        # im = cv.cvtColor(im, cv.COLOR_BGR2BGRA)
+        # im[np.where(frameFrom.boundaries() == 0)] = [0,0,0,255]
+        # rgbResultEdges = cv.addWeighted(cv.cvtColor(frameFrom.rgb(), cv.COLOR_BGR2RGBA), 1, im, 1, 0)
+        # fig = plt.figure(1)
+        # plt.axis('off')
+        # plt.imshow(rgbResultEdges)
+        # plt.show()
+
+        worseResults = copy.deepcopy(frameFrom.boundaries())
+        worseResults[np.nonzero(frameFrom.scaledMeaningfulEdges)] = 0
+
+        self.__frameSet.pop(0)
+        return (frameFrom.scaledMeaningfulEdges, worseResults)
+
+    def reprojectEdgesToConsecutiveFrameSet2(self, frame: EdgeMatcherFrame = None, mode: EdgeMatcherMode = EdgeMatcherMode.REPROJECT, outputDir: str = None) -> (np.ndarray, np.ndarray):
         '''
         Reproject edges from a destination frame based on the frame offset to a set of consecutive frames.
 
@@ -210,19 +398,20 @@ class EdgeMatcher:
         start = time.time()
         # manager needed to share result between threads
         result = Manager().dict()
-        param = []  
+        param = []
 
         for i in range(0, maxFrameOffset):
             # skip own projection
             if i == destFrameIndex:
                 continue
 
-            param.append((destFrame, 
-                        self.__frameSet[i], 
-                        False, 
-                        self.__camera, 
-                        (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary), 
-                        result))
+            param.append((destFrame,
+                          self.__frameSet[i],
+                          False,
+                          self.__camera,
+                          (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary),
+                          1,
+                          result))
 
         pool = mp.Pool(processes=self.__numOfThreads)
         pool.starmap(ImageProcessing.projectEdges, param)
@@ -233,11 +422,32 @@ class EdgeMatcher:
         # destFrame.printProjectedEdgeResults()
 
         meaningfulEdges = destFrame.getMeaningfulEdges()
+        ### REFINE with image pyramids
+        # result = Manager().dict()
+        # param = []
+        # scales = [0.5, 0.25]
+
+        # for s in range(0, len(scales)):
+        #     for i in range(0, maxFrameOffset):
+        #         # skip own projection
+        #         if i == destFrameIndex:
+        #             continue
+
+        #         param.append((destFrame,
+        #                     self.__frameSet[i],
+        #                     False,
+        #                     self.__camera,
+        #                     (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary),
+        #                     1,
+        #                     result))
+
+        # pool = mp.Pool(processes=self.__numOfThreads)
+        # pool.starmap(ImageProcessing.projectEdges, param)
+        # pool.terminate()
         ### REFINE with existing meaningful detections
-        print('refine')
         start = time.time()
         resultRefined = Manager().dict()
-        paramRefined = []  
+        paramRefined = []
 
         tmpDestFrame = copy.copy(destFrame)
         _, tmpDestFrameMask = cv.threshold(meaningfulEdges, 0, 255, cv.THRESH_BINARY)
@@ -252,21 +462,23 @@ class EdgeMatcher:
 
             if refinedMeaningfulEdges is None:
                 continue
-    
+
             _, tmpFrameToMask = cv.threshold(refinedMeaningfulEdges, 0, 255, cv.THRESH_BINARY)
             tmpFrameTo.setBoundaries(tmpFrameToMask.astype(np.uint8))
 
-            paramRefined.append((tmpDestFrame, 
-                            tmpFrameTo,
-                            False,
-                            self.__camera,
-                            (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary),
-                            resultRefined))
+            paramRefined.append((tmpDestFrame,
+                                 tmpFrameTo,
+                                 False,
+                                 self.__camera,
+                                 (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary),
+                                 1,
+                                 resultRefined))
 
-        if len(paramRefined) < self.__frameOffset:            
+        if len(paramRefined) < self.__frameOffset:
             self.__frameSet.pop(0)
             return (None, None)
 
+        print('refine', len(paramRefined))
         pool = mp.Pool(processes=self.__numOfThreads)
         pool.starmap(ImageProcessing.projectEdges, paramRefined)
         pool.terminate()
@@ -277,7 +489,7 @@ class EdgeMatcher:
 
         logging.info('Projected %d meaningful frames in %f sec.' % (len(resultRefined), time.time() - start))
         ### END OF REFINE
-        finalMeaningfulEdges = meaningfulEdges#refinedMeaningfulEdges
+        finalMeaningfulEdges = meaningfulEdges  # refinedMeaningfulEdges
         finalWorseEdges = copy.copy(destFrame.boundaries())
         finalWorseEdges[np.where(meaningfulEdges > 0)] = 0
 
@@ -285,11 +497,11 @@ class EdgeMatcher:
         if outputDir is not None:
             rgbImg = cv.cvtColor(destFrame.rgb(), cv.COLOR_BGR2BGRA)
             depthImg = cv.cvtColor(ImageProcessing.createHeatmap(destFrame.depth().copy()), cv.COLOR_BGR2RGBA)
-            depthImg[np.where((depthImg==[0,0,0,255]).all(axis=2))] = [255,255,255,255]
+            depthImg[np.where((depthImg == [0, 0, 0, 255]).all(axis=2))] = [255, 255, 255, 255]
             combined = cv.addWeighted(rgbImg, 0.7, depthImg, 0.3, 0)
             combined[np.nonzero(destFrame.boundaries())] = [255, 255, 255, 255]
 
-            fig = plt.figure(1, figsize=(20,40))
+            fig = plt.figure(1, figsize=(20, 40))
             plt.subplot(321)
             plt.imshow(combined)
             plt.subplot(322)
@@ -373,7 +585,7 @@ class EdgeMatcher:
         #     plt.imshow(cv.normalize(mag, None, 0, 255, cv.NORM_MINMAX, cv.CV_8UC1), cmap='hot')
         #     print('orientation', np.amax(orientation), np.amin(orientation))
         #     print('magnitude', np.amax(mag), np.amin(mag))
-            
+
         #     plt.show()
 
         #     if not os.path.exists(os.path.join(outputDir, 'plots')):
@@ -428,7 +640,7 @@ class EdgeMatcher:
         start = time.time()
         # needed to share result between threads
         result = Manager().dict()
-        param = []  
+        param = []
 
         for i in range(0, maxFrameOffset):
             if mode == EdgeMatcherMode.CENTERPROJECT:
@@ -436,12 +648,13 @@ class EdgeMatcher:
                 if i == self.__frameOffset:
                     continue
 
-            param.append((self.__frameSet[i], 
-                        destFrame,
-                        True, 
-                        self.__camera, 
-                        (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary), 
-                        result))
+            param.append((self.__frameSet[i],
+                          destFrame,
+                          True,
+                          self.__camera,
+                          (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary),
+                          1,
+                          result))
 
         pool = mp.Pool(processes=self.__numOfThreads)
         pool.starmap(ImageProcessing.projectEdges, param)
@@ -518,10 +731,8 @@ class EdgeMatcher:
         q3 = frameToInvT.item((2, 0)) * p1 + frameToInvT.item((2, 1)) * p2 + frameToInvT.item((2, 2)) * p3 + frameToInvT.item((2, 3))
 
         # lower performance
-        # return np.array([q1, q2, q3], np.float64)
         # point3d = np.array(([point3d[0]],[point3d[1]],[point3d[2]]), np.float64)
         # return np.dot(frameTo.invT_R(), np.dot(frameFrom.R(), point3d) + frameFrom.t()) + frameTo.invT_t()
         # point3d = np.array(([point3d[0]],[point3d[1]],[point3d[2]], [1.0]), np.float64)
         # return np.dot(frameTo.invT(), np.dot(frameFrom.T(), point3d))
-        return np.array(([q1],[q2],[q3]), np.float64)
-
+        return np.array(([q1], [q2], [q3]), np.float64)

@@ -34,6 +34,25 @@ class Camera:
 
         return out
 
+    def rescale(self, factor: float) -> None:
+        '''
+        Rescales the internal camera matrix.
+        '''
+        if factor == 1:
+            # do nothing, same scale
+            return
+
+        if factor == 0:
+            raise ValueError('Invalid scale factor. Must be greater than 0.')
+
+        if factor < 0:
+            factor = abs(factor)
+                
+        self.setFx(self.fx() * factor)
+        self.setFy(self.fy() * factor)
+        self.setCx(self.cx() * factor)
+        self.setCy(self.cy() * factor)
+
     def distortionCoefficients(self) -> np.ndarray:
         '''
         Get the distortion coefficients.
