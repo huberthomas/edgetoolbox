@@ -101,10 +101,40 @@ def projectToWorld(camera: Camera = None, uvzCoords: np.ndarray = None) -> np.nd
     return np.array([X, Y, Z], np.float64)
 
 
+def removeIsolatedPixels(img: np.ndarray = None, area: int = 1, connectivity: int = 8):
+    '''
+    Removes isolated pixels from an image.
+
+    area Isolated pixel area that should be removed.
+
+    connectivity 4 and 8 neighbour connectivity. Default is 8.
+
+    Returns cleared image.
+    '''
+    output = cv.connectedComponentsWithStats(img, connectivity, cv.CV_32S)
+
+    numStats = output[0]
+    labels = output[1]
+    stats = output[2]
+
+    newImg = img.copy()
+
+    for label in range(numStats):
+        if stats[label, cv.CC_STAT_AREA] <= area:
+            newImg[labels == label] = 0
+
+    return newImg
+
 def getInterpolatedElement(mat: np.ndarray = None, x: float = None, y: float = None) -> float:
     '''
     Bilinear interpolation
     see https://github.com/JakobEngel/dso/blob/master/src/util/globalFuncs.h#L39
+
+    mat Image.
+
+    x Float value in x direction.
+
+    y Float value in y direction.
 
     Returns interpolated value.
     '''
