@@ -24,7 +24,11 @@ class Frame:
         self.__distanceTransform = None
         # 4x4 transformation matrix
         self.__T = None
+        self.__R = None
+        self.__t = None
         self.__invT = None
+        self.__invT_R = None
+        self.__invT_t = None
 
     def __str__(self) -> str:
         '''
@@ -108,7 +112,7 @@ class Frame:
 
         Returns the 3x3 rotation matrix.
         '''
-        return self.__getR(self.__T)
+        return self.__R
 
     def invT_R(self) -> np.ndarray:
         '''
@@ -116,7 +120,7 @@ class Frame:
 
         Returns the 3x3 inverse rotation matrix.
         '''
-        return self.__getR(self.__invT)
+        return self.__invT_R
 
     def t(self) -> np.ndarray:
         '''
@@ -124,7 +128,7 @@ class Frame:
 
         Returns the 3x1 translation vector.
         '''
-        return self.__gett(self.__T)
+        return self.__t
 
     def invT_t(self) -> np.ndarray:
         '''
@@ -132,7 +136,7 @@ class Frame:
 
         Returns the 3x1 translation vector.
         '''
-        return self.__gett(self.__invT)
+        return self.__invT_t
 
     def __getR(self, T: np.ndarray = None) -> np.ndarray:
         '''
@@ -162,13 +166,13 @@ class Frame:
 
     def invT(self) -> np.ndarray:
         '''
-        Get the inverse transformation matrx.
+        Get the inverse 4x4 transformation matrx.
         '''
         return self.__invT
 
     def T(self) -> np.ndarray:
         '''
-        Get the transformation matrix.
+        Get the 4x4 transformation matrix.
         '''
         return self.__T
 
@@ -191,8 +195,15 @@ class Frame:
         s = sophus.Se3(sophus.So3(sophus.Quaternion(q[0], v)), t)
 
         T = s.matrix()
-        self.__T = np.array(T, np.float64)
-        self.__invT = np.array(T.inv(), np.float64)
+        tmpT = np.array(T, np.float64)
+        self.__T = tmpT[0:3, 0:4]
+        self.__R = self.__getR(self.__T)
+        self.__t = self.__gett(self.__T)
+
+        invT = np.array(T.inv(), np.float64)
+        self.__invT = invT[0:3, 0:4]
+        self.__invT_R = self.__getR(self.__invT)
+        self.__invT_t = self.__gett(self.__invT)
 
     def isValid(self) -> bool:
         '''
