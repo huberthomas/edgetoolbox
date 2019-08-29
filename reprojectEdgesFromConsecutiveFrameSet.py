@@ -163,6 +163,7 @@ def main() -> None:
         frameFileNames = []
         f = open(os.path.join(args.outputDir, 'records.txt'), 'w')
         f.write('# timestamp d<=%d %d<d<=%d d>%d\n'%(args.lowerEdgeDistanceBoundary, args.lowerEdgeDistanceBoundary, args.upperEdgeDistanceBoundary, args.upperEdgeDistanceBoundary))
+
         for a in gtHandler.data():
             logging.info('Loading frame at timestamp %f (RGB: %s)' % (a.gt.timestamp, a.rgb))
 
@@ -207,8 +208,8 @@ def main() -> None:
                 raise ValueError('Unknown projection mode "%d".' % (args.projectionMode))
 
             # save result
-            numBest = len(meaningfulEdges[np.where(meaningfulEdges > 0)])
-            numWorse = len(worseEdges[np.where(worseEdges > 0)])
+            numBest = len(meaningfulEdges[np.nonzero(meaningfulEdges))])
+            numWorse = len(worseEdges[np.nonzero(worseEdges))])
 
             f.write('%s %d %d %d\n'%(frameFileName, numBest, 0, numWorse))
             f.flush()

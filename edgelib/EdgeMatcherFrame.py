@@ -20,6 +20,9 @@ class EdgeMatcherFrame(Frame):
         self.projectedEdgeResults = {}
         self.__meaningfulEdges = None
 
+        self.scaledMeaningfulEdges = None
+        self.refinedMeaningfulEdges = None
+
     def printProjectedEdgeResults(self) -> None:
         '''
         Print projected edge results as best, good and worse in percent.
