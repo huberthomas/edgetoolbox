@@ -10,15 +10,14 @@ from edgelib.EdgeMatcher import EdgeMatcher, EdgeMatcherMode, EdgeMatcherFrame
 from edgelib.Camera import Camera
 from edgelib import Utilities
 from edgelib import ImageProcessing
-from edgelib import Canny
 import numpy as np
 '''
-from edgelib import Canny
+from edgelib import ImageProcessing
 import numpy as np
 baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz'
 hha = cv.imread(os.path.join(baseDir, 'hha/1311867170.450076.png'))
 depth = cv.cvtColor(cv.imread(os.path.join(baseDir, 'depth/1311867170.450076.png')), cv.COLOR_BGR2GRAY)
-edge = Canny.canny(hha, 5, 10, 3, True, 5)
+edge = ImageProcessing.canny(hha, 5, 10, 3, True, 5)
 nanEdge = edge.copy()
 edge[np.where(depth==0)] = 0
 
@@ -118,7 +117,8 @@ def parseArgs() -> any:
                         default=1, help='Set the frame projection mode. 1 is backprojection, 2 is reprojection and 3 is center frame projection. Default is 1.')
     parser.add_argument('-id', '--inpaintDepth', type=int, choices=[0, 1, 2], default=0,
                         help='Fill out undefined depth regions by inpainting. 0 ... off, 1 ... CV_INPAINT_NS, 2 ... CV_INPAINT_TELEA. Default is 0.')
-    parser.add_argument('-s', '--scale', type=int, choices=[0,1,2], default=0, help='Set the scale level. 0 = 1:1, 1 = 1:2, 2 = 1:4')
+    parser.add_argument('-s', '--scales', type=int, choices=[0,1,2], default=0, help='Set the scale level. 0 = 1:1, 1 = 1:2, 2 = 1:4')
+    parser.add_argument('-mipa', '--minIsolatedPixelArea', type=int, default=0, help='Minimum isolated pixel areas. Cleans contours less or equal this value.')
 
     return parser.parse_args()
 
@@ -142,12 +142,6 @@ def main() -> None:
         camera = Camera()
         camera.loadFromFile(args.camCalibFile)
 
-        for _ in range(0, args.scale):
-            camera.setFx(camera.fx()/2.0)
-            camera.setFy(camera.fy()/2.0)
-            camera.setCx(camera.cx()/2.0)
-            camera.setCy(camera.cy()/2.0)
-
         logging.info('Loading data from associated ground truth file.')
         gtHandler = TumGroundTruthHandler()
         gtHandler.load(args.groundTruthFile)
@@ -159,6 +153,7 @@ def main() -> None:
         edgeMatcher = EdgeMatcher(camera)
         edgeMatcher.setFrameOffset(args.frameOffset)
         edgeMatcher.setEdgeDistanceBoundaries(args.lowerEdgeDistanceBoundary, args.upperEdgeDistanceBoundary)
+        edgeMatcher.setMinIsolatedPixelArea(args.minIsolatedPixelArea)
 
         frameFileNames = []
         f = open(os.path.join(args.outputDir, 'records.txt'), 'w')
@@ -179,12 +174,6 @@ def main() -> None:
             elif args.inpaintDepth == 2:
                 depth = ImageProcessing.reconstructDepthImg(depth, 5, cv.INPAINT_TELEA)
 
-            for _ in range(0, args.scale):
-                rgb = cv.resize(rgb, (0,0), fx=0.5, fy=0.5) #cv.pyrDown(rgb)
-                depth = cv.resize(depth, (0,0), fx=0.5, fy=0.5) #cv.pyrDown(depth)
-                mask = Canny.canny(rgb, 50, 100, 3, True, 3) #cv.resize(mask, (0,0), fx=0.5, fy=0.5) #cv.pyrDown(mask) 
-                #_, mask = cv.threshold(mask, 0, 255, cv.THRESH_BINARY)
-
             frame = EdgeMatcherFrame()
             frame.uid = a.gt.timestamp
             frame.setRgb(rgb)
@@ -199,17 +188,15 @@ def main() -> None:
             
             # determine correct filename
             if args.projectionMode == EdgeMatcherMode.REPROJECT:
-                frameFileName = frameFileNames[len(frameFileNames) - 1]
-            elif args.projectionMode == EdgeMatcherMode.BACKPROJECT:
                 frameFileName = frameFileNames[0]
-            elif args.projectionMode == EdgeMatcherMode.CENTERPROJECT:
+            elif args.projectionMode == EdgeMatcherMode.BACKPROJECT or args.projectionMode == EdgeMatcherMode.CENTERPROJECT:
                 frameFileName = frameFileNames[args.frameOffset]
             else:
                 raise ValueError('Unknown projection mode "%d".' % (args.projectionMode))
 
             # save result
-            numBest = len(meaningfulEdges[np.nonzero(meaningfulEdges))])
-            numWorse = len(worseEdges[np.nonzero(worseEdges))])
+            numBest = len(np.nonzero(meaningfulEdges))
+            numWorse = len(np.nonzero(worseEdges))
 
             f.write('%s %d %d %d\n'%(frameFileName, numBest, 0, numWorse))
             f.flush()

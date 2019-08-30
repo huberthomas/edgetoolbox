@@ -6,7 +6,7 @@ import cv2 as cv
 import time
 import multiprocessing as mp
 from edgelib import Utilities
-from edgelib import Canny
+from edgelib import ImageProcessing
 from edgelib.TumGroundTruthHandler import TumGroundTruthHandler
 from edgelib.EdgeMatcher import EdgeMatcher, EdgeMatcherMode, EdgeMatcherFrame
 from edgelib.Camera import Camera

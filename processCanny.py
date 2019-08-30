@@ -6,7 +6,7 @@ import cv2 as cv
 import time
 import multiprocessing as mp
 from edgelib import Utilities
-from edgelib import Canny
+from edgelib import ImageProcessing
 
 
 def checkInputParameter(args: any) -> any:
@@ -96,7 +96,7 @@ def processAndSaveCanny(imgFilePath: str = None,
         img = cv.imread(imgFilePath)
         #img = cv.pyrDown(img)
         #img = cv.pyrDown(img)
-        edge = Canny.canny(img, threshold1, threshold2, kernelSize, highAccuracy, blurKernelSize)
+        edge = ImageProcessing.canny(img, threshold1, threshold2, kernelSize, highAccuracy, blurKernelSize)
         cv.imwrite(outFilePath, edge)
     except Exception as e:
         raise e
