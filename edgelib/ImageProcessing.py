@@ -1,15 +1,18 @@
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
+import multiprocessing as mp
+import copy
+from multiprocessing import Manager
 from typing import List
 from .Camera import Camera
 from .Frame import Frame
-from . import Canny
 from .EdgeMatcherFrame import EdgeMatcherFrame
-from typing import List
-import copy
-import multiprocessing as mp
-from multiprocessing import Manager
+
+'''
+Image processing helper functions.
+'''
+
 
 def reconstructDepthImg(porousDepthImg: np.ndarray = None,
                         inpaintRadius: int = 5,
@@ -101,7 +104,7 @@ def projectToWorld(camera: Camera = None, uvzCoords: np.ndarray = None) -> np.nd
     return np.array([X, Y, Z], np.float64)
 
 
-def removeIsolatedPixels(img: np.ndarray = None, area: int = 1, connectivity: int = 8):
+def removeIsolatedPixels(img: np.ndarray = None, minIsolatedPixelArea: int = 1, connectivity: int = 8):
     '''
     Removes isolated pixels from an image.
 
@@ -111,19 +114,29 @@ def removeIsolatedPixels(img: np.ndarray = None, area: int = 1, connectivity: in
 
     Returns cleared image.
     '''
+    newImg = img.copy()
+
+    if minIsolatedPixelArea == 0:
+        return newImg
+
+    if minIsolatedPixelArea < 0:
+        minIsolatedPixelArea = abs(minIsolatedPixelArea)
+    
+    if connectivity != 4 and connectivity != 8:
+        raise ValueError('Invalid connectivity value "%d".'%(connectivity))
+
     output = cv.connectedComponentsWithStats(img, connectivity, cv.CV_32S)
 
     numStats = output[0]
     labels = output[1]
     stats = output[2]
 
-    newImg = img.copy()
-
     for label in range(numStats):
-        if stats[label, cv.CC_STAT_AREA] <= area:
+        if stats[label, cv.CC_STAT_AREA] <= minIsolatedPixelArea:
             newImg[labels == label] = 0
 
     return newImg
+
 
 def getInterpolatedElement(mat: np.ndarray = None, x: float = None, y: float = None) -> float:
     '''
@@ -155,12 +168,152 @@ def getInterpolatedElement(mat: np.ndarray = None, x: float = None, y: float = N
     # index = np.int(ix + (iy * w))
     # res2 = dxdy * mat.item(index + 1 + w) + (dy - dxdy) * mat.item(index + w) + (dx - dxdy) * mat.item(index + 1) + (1 - dx - dy + dxdy) * mat.item(index)
 
-    res = dxdy * mat.item((iy + 1, ix + 1)) 
-    res += (dy-dxdy) * mat.item((iy + 1, ix)) 
-    res += (dx-dxdy) * mat.item((iy, ix + 1)) 
+    res = dxdy * mat.item((iy + 1, ix + 1))
+    res += (dy-dxdy) * mat.item((iy + 1, ix))
+    res += (dx-dxdy) * mat.item((iy, ix + 1))
     res += (1 - dx - dy + dxdy) * mat.item((iy, ix))
 
     return res
+
+
+'''
+https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
+https://github.com/FienSoP/canny_edge_detector
+'''
+
+
+def canny(img: np.ndarray = None,
+          threshold1: int = 100,
+          threshold2: int = 150,
+          kernelSize: int = 3,
+          highAccuracy: bool = True,
+          blurKernelSize: int = 3) -> np.ndarray:
+    '''
+    Process Canny edge detection on a defined input image.
+
+    img OpenCV input image.
+
+    threshold1 First threshold for the hysteresis procedure.
+
+    threshold2 Second threshold for the hysteresis procedure.
+
+    kernelSize Kernel size for the sobel operator.
+
+    highAccuracy If true, L2 gradient will be used for more accuracy.
+
+    blurKernelSize Kernel size for the Sobel operator.
+
+    Returns OpenCV image that contains edges.
+    '''
+    if img is None:
+        raise ValueError('Input image is empty.')
+
+    if threshold1 < 0 or threshold2 < 0:
+        raise ValueError('Threshold must be greater than 0.')
+
+    if threshold2 < threshold1:
+        raise ValueError('Threshold 2 must be greater than threshold 1.')
+
+    if kernelSize % 2 == 0 or kernelSize < 3:
+        raise ValueError('Wrong kernel size. Allowed are 3, 5, 7, ...')
+
+    if blurKernelSize % 2 == 0 or blurKernelSize < 3:
+        raise ValueError('Wrong blur kernel size. Allowed are 3, 5, 7, ...')
+
+    c = img.ndim
+
+    if c == 3:
+        img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    elif c == 4:
+        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
+
+    blurredImg = cv.blur(img, (blurKernelSize, blurKernelSize))
+
+    return cv.Canny(blurredImg, threshold1, threshold2, None, kernelSize, highAccuracy)
+
+
+def cannyAscendingThreshold(img: np.ndarray = None,
+                            threshold1: int = 0,
+                            threshold2: int = 0,
+                            kernelSize: int = 3,
+                            highAccuracy: bool = True,
+                            blurKernelSize: int = 3,
+                            stepRange: int = 50,
+                            validEdgesThreshold: float = 0.5) -> np.ndarray:
+    '''
+    Process Canny edge detection on a defined input image. The second threshold will be
+    increased by the step range. The result will be accumulated until no edge is found. 
+    Afterwards the valid edges threshold defines the point in which edges are counted as 
+    good ones.
+
+    img OpenCV input image.
+
+    threshold1 First threshold for the hysteresis procedure.
+
+    threshold2 Second threshold for the hysteresis procedure.
+
+    kernelSize Kernel size for the sobel operator.
+
+    highAccuracy If true, L2 gradient will be used for more accuracy.
+
+    blurKernelSize Kernel size for the Sobel operator.
+
+    stepRange Increasing step range for the second threshold.
+
+    validEdgesThreshold Threshold that defines valid edges. Must be between 0 and 1.
+
+    Returns OpenCV image that contains edges.
+    '''
+    if img is None:
+        raise ValueError('Input image is empty.')
+
+    if threshold1 < 0 or threshold2 < 0:
+        raise ValueError('Threshold must be greater than 0.')
+
+    if threshold2 < threshold1:
+        raise ValueError('Threshold 2 must be greater than threshold 1.')
+
+    if kernelSize % 2 == 0 or kernelSize < 3:
+        raise ValueError('Wrong kernel size. Allowed are 3, 5, 7, ...')
+
+    if blurKernelSize % 2 == 0 or blurKernelSize < 3:
+        raise ValueError('Wrong blur kernel size. Allowed are 3, 5, 7, ...')
+
+    if stepRange <= 0:
+        raise ValueError('Invalid step. Must be greater than 0.')
+
+    if validEdgesThreshold < 0 or validEdgesThreshold > 1:
+        raise ValueError('Invalid threshold. Must be between 0 and less or equal 1.')
+
+    h, w = img.shape[:2]
+    c = img.ndim
+
+    if c == 3:
+        img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    elif c == 4:
+        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
+
+    blurredImg = cv.blur(img, (blurKernelSize, blurKernelSize))
+    edgeImg = np.zeros((h, w), np.float64)
+    resImg = np.zeros((h, w), np.float64)
+
+    i = 0
+    while(True):
+        ascendingThreshold2 = threshold2 + i*stepRange
+
+        edgeImg = cv.Canny(blurredImg, threshold1, ascendingThreshold2, None, kernelSize, highAccuracy) / 255.0
+
+        if np.sum(edgeImg) == 0:
+            break
+
+        resImg = cv.add(resImg, edgeImg)
+        i = i + 1
+
+    validEdgesThreshold = i * validEdgesThreshold
+
+    cv.threshold(resImg, validEdgesThreshold, 255, cv.THRESH_BINARY, edgeImg)
+
+    return edgeImg
 
 
 def createHeatmap(img: np.ndarray = None, colormap: int = cv.COLORMAP_JET) -> np.ndarray:
@@ -249,33 +402,39 @@ def getGradientInformation(img: np.ndarray = None) -> (np.ndarray, np.ndarray, n
 
     return (dx, dy, magnitude, orientation)
 
+
 def projectMultiscaleEdges(frameFrom: EdgeMatcherFrame = None,
-                 frameTo: EdgeMatcherFrame = None,
-                 camera: Camera = None,
-                 edgeDistanceBoundaries: tuple = (0, 0),
-                 scales: List[float] = [1],
-                 result: List[any] = None) -> dict:
+                           frameTo: EdgeMatcherFrame = None,
+                           camera: Camera = None,
+                           edgeDistanceBoundaries: tuple = (0, 0),
+                           scales: List[float] = [1],
+                           cannyThresholds: List[tuple] = [(50, 100)],
+                           cannyKernelSizes: List[tuple] = [(3, 3)],
+                           result: List[any] = None) -> dict:
     '''
     '''
     edgeDistanceLowerBoundary = edgeDistanceBoundaries[0]
     edgeDistanceUpperBoundary = edgeDistanceBoundaries[1]
-    edgeThresMin = 50
-    edgeThresMax = 100
-    edgeKernelSize = 3
-    blurKernelSize = 3
     scaledReprojectedEdgesList = []
 
+    if len(scales) != len(cannyThresholds) and len(scales) != len(cannyKernelSizes):
+        raise ValueError('Invalid Canny parameter setting.')
+
     for s in range(0, len(scales)):
+        edgeThresMin = cannyThresholds[s][0]
+        edgeThresMax = cannyThresholds[s][1]
+        edgeKernelSize = cannyKernelSizes[s][0]
+        blurKernelSize = cannyKernelSizes[s][1]
         scale = scales[s]
-        assert (scale != 0),'Invalid scale "%f". Must be greater than 0.'%(scale)
+        assert (scale != 0), 'Invalid scale "%f". Must be greater than 0.' % (scale)
 
         scaledFrameTo = copy.deepcopy(frameTo)
         scaledFrameTo.setRgb(cv.resize(frameTo.rgb(), (0, 0), fx=scale, fy=scale, interpolation=cv.INTER_AREA))
-        scaledFrameTo.setBoundaries(Canny.canny(scaledFrameTo.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize))
-        
+        scaledFrameTo.setBoundaries(canny(scaledFrameTo.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize))
+
         scaledCamera = copy.deepcopy(camera)
         scaledCamera.rescale(scale)
-        
+
         # rescale values
         scaledEdgeDistanceLowerBoundary = edgeDistanceLowerBoundary * scale
         scaledEdgeDistanceUpperBoundary = edgeDistanceUpperBoundary * scale
@@ -375,17 +534,16 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
             elif distVal > edgeDistanceUpperBoundary:
                 reprojectedEdges.itemset((v, u, 2), reprojectedEdges.item((v, u, 2)) + 1)
 
-
     if result is not None:
         result[frameTo.uid] = reprojectedEdges
 
     # best, good, worse = cv.split(reprojectedEdges)
-    # overlayRgb = copy.deepcopy(cv.cvtColor(frameFrom.rgb(), cv.COLOR_BGR2RGB))
+    # overlayRgb = cv.cvtColor(frameFrom.rgb(), cv.COLOR_BGR2RGB)
     # overlayRgb[np.where(best > 0)]=[0, 255, 0]
     # overlayRgb[np.where(good > 0)]=[255, 255, 0]
     # overlayRgb[np.where(worse > 0)]=[255, 0, 0]
-    # scaledFrameToRgb = copy.deepcopy(frameTo.rgb())
-    # scaledFrameToBoundaries = copy.deepcopy(frameTo.boundaries())
+    # scaledFrameToRgb = frameTo.rgb().copy()
+    # scaledFrameToBoundaries = frameTo.boundaries().copy()
     # scaledFrameToDistanceTransform = copy.deepcopy(frameTo.distanceTransform())
     # scaledFrameToRgb[np.where(scaledFrameToBoundaries > 0)] = [255, 255, 255]
     # scaledFrameToDistanceTransform[np.where(scaledFrameToBoundaries > 0)] = [255]
@@ -410,12 +568,12 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
 
 
 def projectEdgesOld(frameFrom: EdgeMatcherFrame = None,
-                 frameTo: EdgeMatcherFrame = None,
-                 takeInterpolatedPoint: bool = False,
-                 camera: Camera = None,
-                 edgeDistanceBoundaries: tuple = (0, 0),
-                 scale: float = 1,
-                 result: {} = None) -> np.ndarray:
+                    frameTo: EdgeMatcherFrame = None,
+                    takeInterpolatedPoint: bool = False,
+                    camera: Camera = None,
+                    edgeDistanceBoundaries: tuple = (0, 0),
+                    scale: float = 1,
+                    result: {} = None) -> np.ndarray:
     '''
     Project edges from one frame to another.
 
