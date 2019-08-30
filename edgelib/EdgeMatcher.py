@@ -9,14 +9,13 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from typing import List
 from enum import IntEnum
-from .Camera import Camera
-from .Frame import Frame
-from . import ImageProcessing
-from . import Canny
 from scipy import signal
 from .EdgeMatcherFrame import EdgeMatcherFrame
 import copy
+from .Camera import Camera
+from .Frame import Frame
 from . import Utilities
+from . import ImageProcessing
 
 
 class EdgeMatcherMode(IntEnum):
@@ -50,6 +49,29 @@ class EdgeMatcher:
         self.__frameOffset = 1
         self.__camera = camera
         self.__numOfThreads = mp.cpu_count()
+        self.__minIsolatedPixelArea = 0
+
+    def setMinIsolatedPixelArea(self, minIsolatedPixelArea: int = None) -> None:
+        '''
+        Set the minimum isolated pixel area. During the process isolated pixel areas 
+        less than equal this value are removed.
+
+        minIsolatedPixelArea Minimum isolated pixel areas beyond this value are removed.
+        '''
+        if minIsolatedPixelArea is None:
+            raise ValueError('Invalid minimum isolated pixel area.')
+
+        if minIsolatedPixelArea < 0:
+            minIsolatedPixelArea = abs(minIsolatedPixelArea)
+
+        self.__minIsolatedPixelArea = minIsolatedPixelArea
+
+    def minIsolatedPixelArea(self) -> int:
+        '''
+        Returns the minimum isolated pixel area. During the process isolated pixel areas 
+        less than equal this value are removed.
+        '''
+        return self.__minIsolatedPixelArea
 
     def setEdgeDistanceBoundaries(self, lowerBoundary: float = None, upperBoundary: float = None) -> None:
         '''
@@ -137,7 +159,7 @@ class EdgeMatcher:
         try:
             for i in range(0, self.__frameOffset):
                 start = time.time()
-                mask = Canny.cannyAscendingThreshold(self.__frameSet[i].rgb(),
+                mask = ImageProcessing.cannyAscendingThreshold(self.__frameSet[i].rgb(),
                                                      cannyThres1,
                                                      cannyThres2,
                                                      cannyKernelSize,
@@ -172,8 +194,54 @@ class EdgeMatcher:
 
         return meaningfulEdges
 
-    def reprojectEdgesToConsecutiveFrameSet(self, frame: EdgeMatcherFrame = None, mode: EdgeMatcherMode = EdgeMatcherMode.REPROJECT, outputDir: str = None) -> (np.ndarray, np.ndarray):
+    def getProbabilityMap(self, reprojectedEdgesList: List[any] = None) -> np.ndarray:
         '''
+        '''
+        if reprojectedEdgesList is None or len(reprojectedEdgesList) == 0:
+            raise ValueError('Invalid reprojected edges list.')
+
+        scaledMeaningfulEdges = None
+        counter = 0
+
+        for scaledResultList in reprojectedEdgesList:
+            for scaledResult in scaledResultList:
+                counter += 1
+                best, good, worse = cv.split(scaledResult)
+
+                if scaledMeaningfulEdges is None:
+                    h, w = best.shape[:2]
+                    scaledMeaningfulEdges = np.zeros((h, w))
+
+                numBest = np.sum(best)
+                numGood = np.sum(good)
+                numWorse = np.sum(worse)
+
+                # linear weight function
+                weight = (numBest + numGood) / (numBest + numGood + numWorse)
+                # sinoid weight function
+                #weight = np.sin(Utilities.rescale(weight, 0, 1, 0, np.pi/2.0))
+                tmpMeaningfulEdges = cv.add(best, good)
+                tmpMeaningfulEdges *= weight
+                scaledMeaningfulEdges = cv.add(scaledMeaningfulEdges, tmpMeaningfulEdges)
+
+        if counter > 0:
+            scaledMeaningfulEdges /= counter
+            return scaledMeaningfulEdges
+        else:
+            return None
+
+
+    def reprojectEdgesToConsecutiveFrameSet(self, frame: EdgeMatcherFrame = None,
+                                            mode: EdgeMatcherMode = EdgeMatcherMode.REPROJECT,
+                                            outputDir: str = None) -> (np.ndarray, np.ndarray):
+        '''
+        Reproject edges from a destination frame based on the frame offset to a set of consecutive frames.
+
+        frame Current frame information.
+
+        mode Edge matcher mode. Default is reproject, others are backproject and centerproject.
+
+        Returns meaningful edges.
         '''
         if not frame.isValid():
             raise ValueError('Invalid frame.')
@@ -189,67 +257,63 @@ class EdgeMatcher:
         if len(self.__frameSet) <= maxFrameOffset:
             return (None, None)
 
-        destFrameIndex = -1
+        frameFromIndex = -1
 
         if mode == EdgeMatcherMode.BACKPROJECT or mode == EdgeMatcherMode.CENTERPROJECT:
-            destFrameIndex = self.__frameOffset
+            frameFromIndex = self.__frameOffset
         elif mode == EdgeMatcherMode.REPROJECT:
-            destFrameIndex = 0
+            frameFromIndex = 0
         else:
             raise ValueError('Invalid destination frame index.')
 
         maxFrameOffset = len(self.__frameSet)
+        frameFrom = self.__frameSet[frameFromIndex]
+        # PARAMETER SETTING
         scales = [1.0, 0.5, 0.25]
         edgeThresMin = 50
         edgeThresMax = 100
         edgeKernelSize = 3
         blurKernelSize = 5
-        manager = Manager()
+        # for scale 1 keep the parameters equal to the current frame
+        cannyThresholds = [(edgeThresMin, edgeThresMax), (50, 100), (50, 100)]
+        cannyKernelSizes = [(edgeKernelSize, blurKernelSize), (3, 3), (3, 3)]
+        # todo: optional determine edges
+        frameFrom.setBoundaries(ImageProcessing.canny(frameFrom.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize))
 
-        frameFrom = self.__frameSet[destFrameIndex]
-        frameFrom.setBoundaries(Canny.canny(frameFrom.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize))
-        
-        h, w = frameFrom.boundaries().shape[:2]
-
-        reprojectedEdgesList = manager.list()
+        # SCALED RESPONSES
+        reprojectedEdgesList = Manager().list() # needed for multithread pool results
 
         start = time.time()
         scaledThreadParam = []
 
         for i in range(0, maxFrameOffset):
             # skip own projection
-            if i == destFrameIndex:
+            if i == frameFromIndex:
                 continue
 
             frameTo = self.__frameSet[i]
-            scaledThreadParam.append((frameFrom, frameTo, self.__camera, (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary), scales, reprojectedEdgesList))
+            scaledThreadParam.append((frameFrom, frameTo, self.__camera, (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary), scales, cannyThresholds, cannyKernelSizes, reprojectedEdgesList))
 
         pool = mp.Pool(processes=self.__numOfThreads)
         pool.starmap(ImageProcessing.projectMultiscaleEdges, scaledThreadParam)
         pool.terminate()
 
-        logging.info('Projected %d scaled frames in %f sec.' % (len(scales), time.time() - start))
+        logging.info('Projected %d frames and %d scaled frames in %f sec.' % (len(scaledThreadParam), len(scales), time.time() - start))
 
         # sum up and weight scaled results
-        scaledMeaningfulEdges = np.zeros((h, w))
-        for scaledResultList in reprojectedEdgesList:
-            for scaledResult in scaledResultList:
-                best, good, worse = cv.split(scaledResult)
-                numBest = np.sum(best)
-                numGood = np.sum(good)
-                numWorse = np.sum(worse)
+        scaledMeaningfulEdges = self.getProbabilityMap(reprojectedEdgesList)        
 
-                # linear weight function
-                weight = (numBest + numGood) / (numBest + numGood + numWorse)
-                # sinoid weight function
-                #weight = np.sin(Utilities.rescale(weight, 0, 1, 0, np.pi/2.0))
-                tmpMeaningfulEdges = cv.add(best, good)
-                tmpMeaningfulEdges *= weight
-                scaledMeaningfulEdges = cv.add(scaledMeaningfulEdges, tmpMeaningfulEdges)
+        if scaledMeaningfulEdges is None:
+            h, w = frameFrom.boundaries().shape[:2]
+            scaledMeaningfulEdges = np.zeros((h, w))
 
-        scaledMeaningfulEdges /= (len(reprojectedEdgesList) * len(scales))
-        # end of sum up and weight scaled results
+        # remove isolated pixel
+        #_, scaledMeaningfulEdges = cv.threshold(scaledMeaningfulEdges, 0.5, 1, cv.THRESH_BINARY)
+        #scaledMeaningfulEdges = ImageProcessing.removeIsolatedPixels((scaledMeaningfulEdges*255).astype(np.uint8), self.__minIsolatedPixelArea)
+
         frameFrom.scaledMeaningfulEdges = scaledMeaningfulEdges
+        # END OF SCALED RESPONSES
+
 
         '''
         # refine with only precalculated meaningful edges
@@ -339,18 +403,18 @@ class EdgeMatcher:
         plt.show()
         '''
 
-        # cm_hot = mpl.cm.get_cmap('hot')
-        # im = cm_hot(frameFrom.scaledMeaningfulEdges)
-        # im = np.uint8(im * 255)
-        # im = cv.cvtColor(im, cv.COLOR_BGR2BGRA)
-        # im[np.where(frameFrom.boundaries() == 0)] = [0,0,0,255]
-        # rgbResultEdges = cv.addWeighted(cv.cvtColor(frameFrom.rgb(), cv.COLOR_BGR2RGBA), 1, im, 1, 0)
-        # fig = plt.figure(1)
-        # plt.axis('off')
-        # plt.imshow(rgbResultEdges)
-        # plt.show()
+        cm_hot = mpl.cm.get_cmap('hot')
+        im = cm_hot(frameFrom.scaledMeaningfulEdges)
+        im = np.uint8(im * 255)
+        im = cv.cvtColor(im, cv.COLOR_BGR2BGRA)
+        im[np.where(frameFrom.boundaries() == 0)] = [0, 0, 0, 255]
+        rgbResultEdges = cv.addWeighted(cv.cvtColor(frameFrom.rgb(), cv.COLOR_BGR2RGBA), 1, im, 1, 0)
+        fig = plt.figure(1)
+        plt.axis('off')
+        plt.imshow(rgbResultEdges)
+        plt.show()
 
-        worseResults = copy.deepcopy(frameFrom.boundaries())
+        worseResults = frameFrom.boundaries().copy()
         worseResults[np.nonzero(frameFrom.scaledMeaningfulEdges)] = 0
 
         self.__frameSet.pop(0)
@@ -490,7 +554,7 @@ class EdgeMatcher:
         logging.info('Projected %d meaningful frames in %f sec.' % (len(resultRefined), time.time() - start))
         ### END OF REFINE
         finalMeaningfulEdges = meaningfulEdges  # refinedMeaningfulEdges
-        finalWorseEdges = copy.copy(destFrame.boundaries())
+        finalWorseEdges = destFrame.boundaries().copy()
         finalWorseEdges[np.where(meaningfulEdges > 0)] = 0
 
         ### PLOTTING
@@ -550,7 +614,7 @@ class EdgeMatcher:
         #     dx, dy, mag, orientation = ImageProcessing.getGradientInformation(tmp)
         #     # mag[np.where(destFrame.depth==0)] = 0
         #     # orientation[np.where(destFrame.depth==0)] = 0
-        #     #Canny.canny(tmp, 10, 10, 3, True, 3)
+        #     #ImageProcessing.canny(tmp, 10, 10, 3, True, 3)
 
         #     fig = plt.figure(2)
         #     fig.suptitle('Gray Blurred')
@@ -665,7 +729,7 @@ class EdgeMatcher:
         destFrame.printProjectedEdgeResults()
 
         meaningfulEdges = destFrame.getMeaningfulEdges()
-        finalWorseEdges = copy.copy(destFrame.boundaries())
+        finalWorseEdges = destFrame.boundaries().copy()
         finalWorseEdges[np.where(finalMeaningfulEdges > 0)] = 0
         # PLOTTING
         if outputDir is not None:
