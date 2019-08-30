@@ -182,7 +182,7 @@ class Frame:
 
         q Quaternion (w, x, y, z).
 
-        t Translation vector.
+        t Translation vector (t1 t2 t3).
         '''
         if q is None or not len(q) == 4:
             raise ValueError('Invalid quaternion vector. Must be 1x4, not 1x%d.' % len(q))
