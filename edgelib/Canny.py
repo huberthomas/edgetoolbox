@@ -1,139 +1,194 @@
 import cv2
 import numpy as np
+from scipy import ndimage
+from scipy.ndimage import filters
+from typing import List
 
-'''
-https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
-https://github.com/FienSoP/canny_edge_detector
-'''
-def canny(img: np.ndarray = None,
-          threshold1: int = 100,
-          threshold2: int = 150,
-          kernelSize: int = 3,
-          highAccuracy: bool = True,
-          blurKernelSize: int = 3) -> np.ndarray:
+
+class Canny:
     '''
-    Process Canny edge detection on a defined input image.
+    Canny algorithm.
 
-    img OpenCV input image.
-
-    threshold1 First threshold for the hysteresis procedure.
-
-    threshold2 Second threshold for the hysteresis procedure.
-
-    kernelSize Kernel size for the sobel operator.
-
-    highAccuracy If true, L2 gradient will be used for more accuracy.
-
-    blurKernelSize Kernel size for the Sobel operator.
-
-    Returns OpenCV image that contains edges.
+    Refactored from https://github.com/FienSoP/canny_edge_detector/blob/master/canny_edge_detector.py
     '''
-    if img is None:
-        raise ValueError('Input image is empty.')
 
-    if threshold1 < 0 or threshold2 < 0:
-        raise ValueError('Threshold must be greater than 0.')
+    def __init__(self, sigma: float = 1, kernelSize: int = 5, weakPixel: int = 75, strongPixel: int = 255, lowThreshold: float = 0.05, highThreshold: float = 0.15):
+        '''
+        Constructor. Initialize values.
 
-    if threshold2 < threshold1:
-        raise ValueError('Threshold 2 must be greater than threshold 1.')
+        imgs Array of input images.
 
-    if kernelSize % 2 == 0 or kernelSize < 3:
-        raise ValueError('Wrong kernel size. Allowed are 3, 5, 7, ...')
+        sigma Gaussian kernel parameter for smoothing.
 
-    if blurKernelSize % 2 == 0 or blurKernelSize < 3:
-        raise ValueError('Wrong blur kernel size. Allowed are 3, 5, 7, ...')
+        kernelSize Gaussian kernel size.
 
-    c = img.ndim
+        weakPixel Weak pixel theshold for hysteresis.
 
-    if c == 3:
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    elif c == 4:
-        img = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
+        strongPixel Strong pixel threshold for hysteresis.
 
-    blurredImg = cv2.blur(img, (blurKernelSize, blurKernelSize))
+        lowThreshold Lower threshold.
 
-    return cv2.Canny(blurredImg, threshold1, threshold2, None, kernelSize, highAccuracy)
+        highThreshold High threshold.
+        '''
+        self.imgSmoothed = None
+        self.gradientMat = None
+        self.thetaMat = None
+        self.nonMaxImg = None
+        self.thresholdImg = None
+        self.weakPixel = weakPixel
+        self.strongPixel = strongPixel
+        self.sigma = sigma
+        self.kernelSize = kernelSize
+        self.lowThreshold = lowThreshold
+        self.highThreshold = highThreshold
 
+    def gaussianKernel(self, kernelSize: int = 5, sigma: float = 1) -> np.ndarray:
+        '''
+        Gaussian kernel.
 
-def cannyAscendingThreshold(img: np.ndarray = None,
-                            threshold1: int = 0,
-                            threshold2: int = 0,
-                            kernelSize: int = 3,
-                            highAccuracy: bool = True,
-                            blurKernelSize: int = 3,
-                            stepRange: int = 50,
-                            validEdgesThreshold: float = 0.5) -> np.ndarray:
-    '''
-    Process Canny edge detection on a defined input image. The second threshold will be
-    increased by the step range. The result will be accumulated until no edge is found. 
-    Afterwards the valid edges threshold defines the point in which edges are counted as 
-    good ones.
+        kernelSize Gaussian kernel size.
 
-    img OpenCV input image.
+        sigma Gaussian kernel parameter.
 
-    threshold1 First threshold for the hysteresis procedure.
+        Returns a Gaussian kernel.
+        '''
+        kernelSize = int(kernelSize) // 2
+        x, y = np.mgrid[-kernelSize:(kernelSize + 1), -kernelSize:(kernelSize + 1)]
+        normal = 1 / (2.0 * np.pi * sigma**2)
+        g = np.exp(-((x**2 + y**2) / (2.0*sigma**2))) * normal
+        return g
 
-    threshold2 Second threshold for the hysteresis procedure.
+    def sobelFilters(self, img: np.ndarray = None) -> (np.ndarray, np.ndarray):
+        '''
+        Filter an image with Sobel in x and y direction and return the gradient and the gradient direction.
 
-    kernelSize Kernel size for the sobel operator.
+        img Input image.
 
-    highAccuracy If true, L2 gradient will be used for more accuracy.
+        Returns the gradient and the gradient direction.
+        '''
+        Kx = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], np.float32)
+        Ky = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]], np.float32)
 
-    blurKernelSize Kernel size for the Sobel operator.
+        Ix = filters.convolve(img, Kx)
+        Iy = filters.convolve(img, Ky)
 
-    stepRange Increasing step range for the second threshold.
+        G = np.hypot(Ix, Iy)
+        G = G / G.max() * 255
+        theta = np.arctan2(Iy, Ix)
+        return (G, theta)
 
-    validEdgesThreshold Threshold that defines valid edges. Must be between 0 and 1.
+    def nonMaxSuppression(self, img: np.ndarray = None, direction: np.ndarray = None) -> np.ndarray:
+        '''
+        Non maximum suppression of a single channel image.
 
-    Returns OpenCV image that contains edges.
-    '''
-    if img is None:
-        raise ValueError('Input image is empty.')
+        img Single channel image that is non max suppressed.
 
-    if threshold1 < 0 or threshold2 < 0:
-        raise ValueError('Threshold must be greater than 0.')
+        direction Gradient directions of the image.
 
-    if threshold2 < threshold1:
-        raise ValueError('Threshold 2 must be greater than threshold 1.')
+        Returns the non max suppressed image.
+        '''
+        M, N = img.shape
+        Z = np.zeros((M, N), dtype=np.int32)
+        angle = direction * 180. / np.pi
+        angle[angle < 0] += 180
 
-    if kernelSize % 2 == 0 or kernelSize < 3:
-        raise ValueError('Wrong kernel size. Allowed are 3, 5, 7, ...')
+        for i in range(1, M-1):
+            for j in range(1, N-1):
+                try:
+                    q = 255
+                    r = 255
 
-    if blurKernelSize % 2 == 0 or blurKernelSize < 3:
-        raise ValueError('Wrong blur kernel size. Allowed are 3, 5, 7, ...')
+                   #angle 0
+                    if (0 <= angle[i, j] < 22.5) or (157.5 <= angle[i, j] <= 180):
+                        q = img[i, j+1]
+                        r = img[i, j-1]
+                    #angle 45
+                    elif (22.5 <= angle[i, j] < 67.5):
+                        q = img[i+1, j-1]
+                        r = img[i-1, j+1]
+                    #angle 90
+                    elif (67.5 <= angle[i, j] < 112.5):
+                        q = img[i+1, j]
+                        r = img[i-1, j]
+                    #angle 135
+                    elif (112.5 <= angle[i, j] < 157.5):
+                        q = img[i-1, j-1]
+                        r = img[i+1, j+1]
 
-    if stepRange <= 0:
-        raise ValueError('Invalid step. Must be greater than 0.')
+                    if (img[i, j] >= q) and (img[i, j] >= r):
+                        Z[i, j] = img[i, j]
+                    else:
+                        Z[i, j] = 0
 
-    if validEdgesThreshold < 0 or validEdgesThreshold > 1:
-        raise ValueError('Invalid threshold. Must be between 0 and less or equal 1.')
+                except IndexError as e:
+                    pass
 
-    h, w = img.shape[:2]
-    c = img.ndim
-    
-    if c == 3:
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    elif c == 4:
-        img = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
+        return Z
 
-    blurredImg = cv2.blur(img, (blurKernelSize, blurKernelSize))
-    edgeImg = np.zeros((h, w), np.float64)
-    resImg = np.zeros((h, w), np.float64)
+    def threshold(self, img: np.ndarray = None) -> np.ndarray:
+        '''
+        Image thresholding.
 
-    i = 0
-    while(True):
-        ascendingThreshold2 = threshold2 + i*stepRange
+        img Input image that is thresholded.
 
-        edgeImg = cv2.Canny(blurredImg, threshold1, ascendingThreshold2, None, kernelSize, highAccuracy) / 255.0
+        Returns thresholded image.
+        '''
+        highThreshold = img.max() * self.highThreshold
+        lowThreshold = highThreshold * self.lowThreshold
 
-        if np.sum(edgeImg) == 0:
-            break
+        M, N = img.shape
+        res = np.zeros((M, N), dtype=np.int32)
 
-        resImg = cv2.add(resImg, edgeImg)
-        i = i + 1
+        weak = np.int32(self.weakPixel)
+        strong = np.int32(self.strongPixel)
 
-    validEdgesThreshold = i * validEdgesThreshold
+        strong_i, strong_j = np.where(img >= highThreshold)
+        # zeros_i, zeros_j = np.where(img < lowThreshold)
 
-    cv2.threshold(resImg, validEdgesThreshold, 255, cv2.THRESH_BINARY, edgeImg)
+        weak_i, weak_j = np.where(np.logical_and((img <= highThreshold), (img >= lowThreshold)))
 
-    return edgeImg
+        res[strong_i, strong_j] = strong
+        res[weak_i, weak_j] = weak
+
+        return (res)
+
+    def hysteresis(self, img: np.ndarray = None) -> np.ndarray:
+        '''
+        Hysteresis process.
+
+        img Single channel input image.
+
+        Returns filtered image.
+        '''
+        M, N = img.shape
+        weak = self.weakPixel
+        strong = self.strongPixel
+
+        for i in range(1, M-1):
+            for j in range(1, N-1):
+                if (img[i, j] == weak):
+                    try:
+                        if ((img[i+1, j-1] == strong) or (img[i+1, j] == strong) or (img[i+1, j+1] == strong)
+                            or (img[i, j-1] == strong) or (img[i, j+1] == strong)
+                                or (img[i-1, j-1] == strong) or (img[i-1, j] == strong) or (img[i-1, j+1] == strong)):
+                            img[i, j] = strong
+                        else:
+                            img[i, j] = 0
+                    except IndexError as e:
+                        pass
+
+        return img
+
+    def detect(self, img: np.ndarray = None):
+        '''
+        Detect edges.
+
+        img Input image.
+
+        Returns detected edge image.
+        '''
+        self.imgSmoothed = filters.convolve(img, self.gaussianKernel(self.kernelSize, self.sigma))
+        self.gradientMat, self.thetaMat = self.sobelFilters(self.imgSmoothed)
+        self.nonMaxImg = self.nonMaxSuppression(self.gradientMat, self.thetaMat)
+        self.thresholdImg = self.threshold(self.nonMaxImg)
+        return self.hysteresis(self.thresholdImg)
