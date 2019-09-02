@@ -44,6 +44,7 @@ class EdgeMatcher:
             raise ValueError('Invalid camera.')
 
         self.__frameSet: List[Frame] = []
+        self.__processedFrameSet: List[Frame] = []
         self.__edgeDistanceLowerBoundary = 1
         self.__edgeDistanceUpperBoundary = 10
         self.__frameOffset = 1
@@ -252,7 +253,7 @@ class EdgeMatcher:
         maxFrameOffset = self.__frameOffset
 
         if mode == EdgeMatcherMode.CENTERPROJECT:
-            maxFrameOffset = 2 * self.__frameOffset
+            maxFrameOffset = 2 * maxFrameOffset
 
         if len(self.__frameSet) <= maxFrameOffset:
             return (None, None)
@@ -308,8 +309,10 @@ class EdgeMatcher:
             scaledMeaningfulEdges = np.zeros((h, w))
 
         # remove isolated pixel
-        #_, scaledMeaningfulEdges = cv.threshold(scaledMeaningfulEdges, 0.5, 1, cv.THRESH_BINARY)
-        #scaledMeaningfulEdges = ImageProcessing.removeIsolatedPixels((scaledMeaningfulEdges*255).astype(np.uint8), self.__minIsolatedPixelArea)
+        if self.__minIsolatedPixelArea > 0:
+            _, thresScaledMeaningfulEdges = cv.threshold(scaledMeaningfulEdges, 0, 1, cv.THRESH_BINARY)
+            remained, removed = ImageProcessing.removeIsolatedPixels((thresScaledMeaningfulEdges).astype(np.uint8), self.__minIsolatedPixelArea)
+            scaledMeaningfulEdges[np.nonzero(removed)] = 0
 
         frameFrom.scaledMeaningfulEdges = scaledMeaningfulEdges
         # END OF SCALED RESPONSES
