@@ -104,7 +104,7 @@ def projectToWorld(camera: Camera = None, uvzCoords: np.ndarray = None) -> np.nd
     return np.array([X, Y, Z], np.float64)
 
 
-def removeIsolatedPixels(img: np.ndarray = None, minIsolatedPixelArea: int = 1, connectivity: int = 8):
+def removeIsolatedPixels(img: np.ndarray = None, minIsolatedPixelArea: int = 1, connectivity: int = 8) -> (np.ndarray, np.ndarray):
     '''
     Removes isolated pixels from an image.
 
@@ -112,12 +112,13 @@ def removeIsolatedPixels(img: np.ndarray = None, minIsolatedPixelArea: int = 1, 
 
     connectivity 4 and 8 neighbour connectivity. Default is 8.
 
-    Returns cleared image.
+    Returns cleaned image and cleared pixel mask.
     '''
-    newImg = img.copy()
+    remained = img.copy()
+    removed = np.zeros((img.shape), np.uint8)
 
     if minIsolatedPixelArea == 0:
-        return newImg
+        return (remained, removed)
 
     if minIsolatedPixelArea < 0:
         minIsolatedPixelArea = abs(minIsolatedPixelArea)
@@ -133,9 +134,10 @@ def removeIsolatedPixels(img: np.ndarray = None, minIsolatedPixelArea: int = 1, 
 
     for label in range(numStats):
         if stats[label, cv.CC_STAT_AREA] <= minIsolatedPixelArea:
-            newImg[labels == label] = 0
+            remained[labels == label] = 0
+            removed[labels == label] = 1
 
-    return newImg
+    return (remained, removed)
 
 
 def getInterpolatedElement(mat: np.ndarray = None, x: float = None, y: float = None) -> float:
