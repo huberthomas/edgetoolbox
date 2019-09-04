@@ -68,7 +68,7 @@ class EdgeMatcherFrame(Frame):
         if total == 0:
             return None
 
-        h, w = self.boundaries().shape
+        h, w = self.rgb().shape[:2]
         meaningfulEdges = np.zeros((h, w), np.float64)
 
         for projectedEdges in self.projectedEdgeResults.values():

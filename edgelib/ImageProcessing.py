@@ -568,7 +568,6 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
 
     return reprojectedEdges
 
-
 def projectEdgesOld(frameFrom: EdgeMatcherFrame = None,
                     frameTo: EdgeMatcherFrame = None,
                     takeInterpolatedPoint: bool = False,
@@ -612,7 +611,7 @@ def projectEdgesOld(frameFrom: EdgeMatcherFrame = None,
 
     distTransMat = frameTo.distanceTransform()
 
-    h, w = frameTo.boundaries().shape
+    h, w = frameTo.rgb().shape[:2]
     reprojectedEdges = np.zeros((h, w, 3))
 
     for u in range(0, w):
