@@ -315,7 +315,7 @@ def cannyAscendingThreshold(img: np.ndarray = None,
 
     cv.threshold(resImg, validEdgesThreshold, 255, cv.THRESH_BINARY, edgeImg)
 
-    return edgeImg
+    return edgeImg.astype(np.uint8)
 
 
 def createHeatmap(img: np.ndarray = None, colormap: int = cv.COLORMAP_JET) -> np.ndarray:
@@ -419,8 +419,10 @@ def projectMultiscaleEdges(frameFrom: EdgeMatcherFrame = None,
     edgeDistanceUpperBoundary = edgeDistanceBoundaries[1]
     scaledReprojectedEdgesList = []
 
-    if len(scales) != len(cannyThresholds) and len(scales) != len(cannyKernelSizes):
-        raise ValueError('Invalid Canny parameter setting.')
+    if len(cannyThresholds) < len(scales) and len(cannyKernelSizes) < len(scales):
+        raise ValueError('Invalid parameter settings.')
+
+    # fig = plt.figure(3)
 
     for s in range(0, len(scales)):
         edgeThresMin = cannyThresholds[s][0]
@@ -431,8 +433,15 @@ def projectMultiscaleEdges(frameFrom: EdgeMatcherFrame = None,
         assert (scale != 0), 'Invalid scale "%f". Must be greater than 0.' % (scale)
 
         scaledFrameTo = copy.deepcopy(frameTo)
-        scaledFrameTo.setRgb(cv.resize(frameTo.rgb(), (0, 0), fx=scale, fy=scale, interpolation=cv.INTER_AREA))
+
+        if scale != 1:
+            scaledFrameTo.setRgb(cv.resize(frameTo.rgb(), (0, 0), fx=scale, fy=scale, interpolation=cv.INTER_AREA))
+
         scaledFrameTo.setBoundaries(canny(scaledFrameTo.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize))
+        
+        # fig.add_subplot(1, len(scales), s+1)
+        # plt.title('%d'%s)
+        # plt.imshow(scaledFrameTo.boundaries())
 
         scaledCamera = copy.deepcopy(camera)
         scaledCamera.rescale(scale)
@@ -443,8 +452,8 @@ def projectMultiscaleEdges(frameFrom: EdgeMatcherFrame = None,
 
         scaledReprojectedEdgesList.append(projectEdges(frameFrom, scaledFrameTo, camera, scaledCamera, (scaledEdgeDistanceLowerBoundary, scaledEdgeDistanceUpperBoundary)))
 
+    # plt.show()
     result.append(scaledReprojectedEdgesList)
-
     return scaledReprojectedEdgesList
 
 
@@ -565,108 +574,5 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     # plt.title('Matches')
     # plt.imshow(matchesImg)
     # plt.show()
-
-    return reprojectedEdges
-
-def projectEdgesOld(frameFrom: EdgeMatcherFrame = None,
-                    frameTo: EdgeMatcherFrame = None,
-                    takeInterpolatedPoint: bool = False,
-                    camera: Camera = None,
-                    edgeDistanceBoundaries: tuple = (0, 0),
-                    scale: float = 1,
-                    result: {} = None) -> np.ndarray:
-    '''
-    Project edges from one frame to another.
-
-    frameFrom Frame that should be projected to.
-
-    frameTo Frame on that is projected.
-
-    distTransMat Distance matrix that contains the distance transform values.
-
-    takeInterpolatedPoint Take interpolated point for counting up rating.
-
-    camera Camera matrix.
-
-    edgeDistanceBoundaries Boundaries for edge classification: best, good, worse.
-
-    result Stores result in dictionary: key = frameTo.uid, value = see return value
-
-    Returns matrix that contains the result of the reprojection.
-    1 channel: best with distance <= edgeDistanceLowerBoundary
-    2 channel: good with edgeDistanceLowerBoundary < distance <= edgeDistanceUpperBoundary
-    3 channel: worse with distance > edgeDistanceUpperBoundary
-    '''
-    if not frameFrom.isValid():
-        raise ValueError('Invalid frame from.')
-
-    if not frameTo.isValid():
-        raise ValueError('Invalid frame to.')
-
-    if camera is None:
-        raise ValueError('Invalid camera.')
-
-    if camera.depthScaleFactor() == 0:
-        raise ValueError('Invalid depth scale factor.')
-
-    distTransMat = frameTo.distanceTransform()
-
-    h, w = frameTo.rgb().shape[:2]
-    reprojectedEdges = np.zeros((h, w, 3))
-
-    for u in range(0, w):
-        for v in range(0, h):
-
-            if frameFrom.boundaries().item((v, u)) == 0:
-                continue
-
-            if frameFrom.depth().item((v, u)) == 0:
-                continue
-
-            z = np.float64(frameFrom.depth().item((v, u))) / np.float64(camera.depthScaleFactor())
-
-            if z == 0:
-                continue
-
-            # project to world coordinate system
-            X = (u - camera.cx()) * z / camera.fx()
-            Y = (v - camera.cy()) * z / camera.fy()
-            # rotate, translate to other frame
-            frameFromT = frameFrom.T()
-            frameToInvT = frameTo.invT()
-            p1 = frameFromT.item((0, 0)) * X + frameFromT.item((0, 1)) * Y + frameFromT.item((0, 2)) * z + frameFromT.item((0, 3))
-            p2 = frameFromT.item((1, 0)) * X + frameFromT.item((1, 1)) * Y + frameFromT.item((1, 2)) * z + frameFromT.item((1, 3))
-            p3 = frameFromT.item((2, 0)) * X + frameFromT.item((2, 1)) * Y + frameFromT.item((2, 2)) * z + frameFromT.item((2, 3))
-            q1 = frameToInvT.item((0, 0)) * p1 + frameToInvT.item((0, 1)) * p2 + frameToInvT.item((0, 2)) * p3 + frameToInvT.item((0, 3))
-            q2 = frameToInvT.item((1, 0)) * p1 + frameToInvT.item((1, 1)) * p2 + frameToInvT.item((1, 2)) * p3 + frameToInvT.item((1, 3))
-            q3 = frameToInvT.item((2, 0)) * p1 + frameToInvT.item((2, 1)) * p2 + frameToInvT.item((2, 2)) * p3 + frameToInvT.item((2, 3))
-            # rescale camera if necessary
-            camera.rescale(scale)
-            # project found 3d point Q back to the image plane
-            U = (q1 / q3) * camera.fx() + camera.cx()
-            V = (q2 / q3) * camera.fy() + camera.cy()
-            # boundary check
-            if U < 0 or V < 0 or U > (w-1) or V > (h-1):
-                continue
-
-            distVal = getInterpolatedElement(distTransMat, U, V)
-
-            poi = np.array([u, v])
-
-            if takeInterpolatedPoint:
-                poi = np.array([int(U), int(V)])
-
-            edgeDistanceLowerBoundary = edgeDistanceBoundaries[0]
-            edgeDistanceUpperBoundary = edgeDistanceBoundaries[1]
-
-            if distVal <= edgeDistanceLowerBoundary:
-                reprojectedEdges.itemset((poi[1], poi[0], 0), reprojectedEdges.item((poi[1], poi[0], 0)) + 1)
-            elif distVal > edgeDistanceLowerBoundary and distVal <= edgeDistanceUpperBoundary:
-                reprojectedEdges.itemset((poi[1], poi[0], 1), reprojectedEdges.item((poi[1], poi[0], 1)) + 1)
-            elif distVal > edgeDistanceUpperBoundary:
-                reprojectedEdges.itemset((poi[1], poi[0], 2), reprojectedEdges.item((poi[1], poi[0], 2)) + 1)
-
-    if result is not None:
-        result[frameTo.uid] = reprojectedEdges
 
     return reprojectedEdges
