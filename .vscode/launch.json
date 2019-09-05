@@ -1,0 +1,25 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: reprojectEdgesFromConsecutiveFrameSet.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/reprojectEdgesFromConsecutiveFrameSet.py",
+            "args" : ["-g", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/groundtruth_associated.txt", 
+                "-r", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/rgb", 
+                "-d", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/depth_inpaint_nans_m0", 
+                "-m", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/all/rgbd_dataset_freiburg2_xyz/level0/canny", 
+                "-c", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/camera_calib_schenk.yml", 
+                "-o", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/em_output", 
+                "-p", "3", 
+                "-f", "2", 
+                "-l", "2", 
+                "-u", "2", 
+                "-mipa", "100"]
+        }
+    ]
+}
