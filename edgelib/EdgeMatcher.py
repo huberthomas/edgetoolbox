@@ -272,7 +272,7 @@ class EdgeMatcher:
         cannyThresholds = [(edgeThresMin, edgeThresMax), (25, 100), (25, 100)]
         cannyKernelSizes = [(edgeKernelSize, blurKernelSize), (3, 5), (3, 3)]
 
-        print('Frameset size is %d'%len(self.__frameSet))
+        #print('Frameset size is %d'%len(self.__frameSet))
 
         for i in range(0, maxFrameOffset):
             frameFromIndex = i + self.__frameOffset
