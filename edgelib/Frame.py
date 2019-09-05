@@ -209,13 +209,13 @@ class Frame:
         '''
         Check if frame is valid.
         '''
-        if(self.__rgb is None or self.__depth is None or self.__boundaries is None):
+        if(self.__rgb is None or self.__depth is None):# or self.__boundaries is None):
             return False
 
-        if(type(self.__rgb) is not np.ndarray or type(self.__depth) is not np.ndarray or type(self.__boundaries) is not np.ndarray):
+        if(type(self.__rgb) is not np.ndarray or type(self.__depth) is not np.ndarray):# or type(self.__boundaries) is not np.ndarray):
             return False
 
-        if(self.__rgb.size == 0 or self.__depth.size == 0 or self.__boundaries.size == 0):
+        if(self.__rgb.size == 0 or self.__depth.size == 0):# or self.__boundaries.size == 0):
             return False
 
         return True
