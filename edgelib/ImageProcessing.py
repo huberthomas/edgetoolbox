@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 import copy
-from multiprocessing import Manager
 from typing import List
 from .Camera import Camera
 from .Frame import Frame
@@ -12,6 +11,54 @@ from .EdgeMatcherFrame import EdgeMatcherFrame
 '''
 Image processing helper functions.
 '''
+
+def hysteresis(img: np.ndarray = None, lowThreshold: float = 0.05, highThreshold: float = 0.15) -> None:
+    '''
+    Perform hysteresis on an image.
+
+    Single channel image.
+
+    weakPixel Weak pixel theshold for hysteresis.
+
+    strongPixel Strong pixel threshold for hysteresis.
+
+    lowThreshold Lower threshold.
+
+    highThreshold High threshold.
+    '''
+    if img is None:
+        raise ValueError('Invalid image.')
+
+    highThreshold = highThreshold
+    lowThreshold = highThreshold * lowThreshold
+
+    strong_i, strong_j = np.where(img >= highThreshold)
+    weak_i, weak_j = np.where(np.logical_and((img <= highThreshold), (img >= lowThreshold)))
+
+    strongPixel = 1
+    weakPixel = 0.5
+    M, N = img.shape
+    thres = np.zeros((M, N), dtype=np.float64)
+    thres[strong_i, strong_j] = strongPixel
+    thres[weak_i, weak_j] = weakPixel
+
+    for i in range(1, M-1):
+        for j in range(1, N-1):
+            if (thres[i, j] == weakPixel):
+                try:
+                    if ((thres[i+1, j-1] == strongPixel) or (thres[i+1, j] == strongPixel) or (thres[i+1, j+1] == strongPixel)
+                        or (thres[i, j-1] == strongPixel) or (thres[i, j+1] == strongPixel)
+                            or (thres[i-1, j-1] == strongPixel) or (thres[i-1, j] == strongPixel) or (thres[i-1, j+1] == strongPixel)):
+                        thres[i, j] = strongPixel
+                    else:
+                        thres[i, j] = 0
+                except IndexError:
+                    pass
+
+    return thres
+
+
+
 
 
 def reconstructDepthImg(porousDepthImg: np.ndarray = None,
@@ -114,8 +161,9 @@ def removeIsolatedPixels(img: np.ndarray = None, minIsolatedPixelArea: int = 1, 
 
     Returns cleaned image and cleared pixel mask.
     '''
+    h, w = img.shape[:2]
     remained = img.copy()
-    removed = np.zeros((img.shape), np.uint8)
+    removed = np.zeros((h, w), np.uint8)
 
     if minIsolatedPixelArea == 0:
         return (remained, removed)
@@ -437,7 +485,8 @@ def projectMultiscaleEdges(frameFrom: EdgeMatcherFrame = None,
         if scale != 1:
             scaledFrameTo.setRgb(cv.resize(frameTo.rgb(), (0, 0), fx=scale, fy=scale, interpolation=cv.INTER_AREA))
 
-        scaledFrameTo.setBoundaries(canny(scaledFrameTo.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize))
+        scaledBoundaries = canny(scaledFrameTo.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize)
+        scaledFrameTo.setBoundaries(scaledBoundaries)
         
         # fig.add_subplot(1, len(scales), s+1)
         # plt.title('%d'%s)
@@ -533,12 +582,12 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
             if distVal <= edgeDistanceLowerBoundary:
                 reprojectedEdges.itemset((v, u, 0), reprojectedEdges.item((v, u, 0)) + 1)
                 ## draw matches
-                matchIndex = len(keyPointsFrameFrom)
-                keyPointsFrameFrom.append(cv.KeyPoint(u, v, 1))
-                keyPointsFrameTo.append(cv.KeyPoint(int(q[0]), int(q[1]), 1))
+                # matchIndex = len(keyPointsFrameFrom)
+                # keyPointsFrameFrom.append(cv.KeyPoint(u, v, 1))
+                # keyPointsFrameTo.append(cv.KeyPoint(int(q[0]), int(q[1]), 1))
 
-                if matchIndex % 50 == 0:
-                    matches.append(cv.DMatch(matchIndex, matchIndex, 1))
+                # if matchIndex % 50 == 0:
+                #     matches.append(cv.DMatch(matchIndex, matchIndex, 1))
                 ## end of draw matches
             elif distVal > edgeDistanceLowerBoundary and distVal <= edgeDistanceUpperBoundary:
                 reprojectedEdges.itemset((v, u, 1), reprojectedEdges.item((v, u, 1)) + 1)
