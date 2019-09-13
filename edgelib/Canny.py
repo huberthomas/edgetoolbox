@@ -143,8 +143,6 @@ class Canny:
         strong = np.int32(self.strongPixel)
 
         strong_i, strong_j = np.where(img >= highThreshold)
-        # zeros_i, zeros_j = np.where(img < lowThreshold)
-
         weak_i, weak_j = np.where(np.logical_and((img <= highThreshold), (img >= lowThreshold)))
 
         res[strong_i, strong_j] = strong

@@ -123,3 +123,15 @@ if __name__ == '__main__':
     print('Data Augmentation')
     print('#################')
     main()
+
+
+'''
+python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt/rgbd_dataset_freiburg2_desk -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_aug/rgbd_dataset_freiburg2_desk
+python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb/rgbd_dataset_freiburg2_desk -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_aug/rgbd_dataset_freiburg2_desk
+
+python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt/rgbd_dataset_freiburg2_xyz -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_aug/rgbd_dataset_freiburg2_xyz
+python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb/rgbd_dataset_freiburg2_xyz -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_aug/rgbd_dataset_freiburg2_xyz
+
+python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt/rgbd_dataset_freiburg3_long_office_household -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_aug/rgbd_dataset_freiburg3_long_office_household
+python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb/rgbd_dataset_freiburg3_long_office_household -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_aug/rgbd_dataset_freiburg3_long_office_household
+'''

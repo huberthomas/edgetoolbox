@@ -138,7 +138,15 @@ def main() -> None:
         datasetBase = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets'
 
         subDir = [
-            'rgbd_dataset_freiburg3_long_office_household'
+            # 'rgbd_dataset_freiburg1_desk',
+            # 'rgbd_dataset_freiburg1_desk2',
+            # 'rgbd_dataset_freiburg1_plant',
+            # 'rgbd_dataset_freiburg1_room',
+            # 'rgbd_dataset_freiburg1_rpy',
+            # 'rgbd_dataset_freiburg1_xyz',
+            'rgbd_dataset_freiburg2_desk',
+            'rgbd_dataset_freiburg2_xyz',
+            'rgbd_dataset_freiburg3_long_office_household',
         ]
 
         for i in range(0, len(subDir)):
@@ -147,9 +155,9 @@ def main() -> None:
             args.maskDir = os.path.join(allBase, subDir[i], 'level0/canny')
             args.camCalibFile = os.path.join(datasetBase, subDir[i], 'camera_calib_schenk.yml')
             args.groundTruthFile = os.path.join(datasetBase, subDir[i], 'groundtruth_associated.txt')
-            args.outputDir = os.path.join(trainRgbBase, 'gt', subDir[i])
-            args.frameOffset = 5
-            args.lowerEdgeDistanceBoundary = 4
+            args.outputDir = os.path.join(trainRgbBase, 'gt_tmp', subDir[i])
+            args.frameOffset = 3#4
+            args.lowerEdgeDistanceBoundary = 3
             args.upperEdgeDistanceBoundary = args.lowerEdgeDistanceBoundary
             args.projectionMode = 3
             args.inpaintDepth = 2
@@ -223,23 +231,23 @@ def main() -> None:
                 rgbCpy[np.nonzero(cleanedEdges)] = [255, 0, 0]
                 rgbCpy[np.nonzero(resultFrame.refinedMeaningfulEdges)] = [0, 255, 0]
 
-                # fig = plt.figure(2)
-                # fig.suptitle('Meaningful Edges Results')
-                # fig.add_subplot(3, 1, 1)
-                # plt.axis('off')
-                # plt.title('Scaled Meaningful Edges')
-                # plt.imshow(resultFrame.scaledMeaningfulEdges, cmap='hot')
+                fig = plt.figure(2)
+                fig.suptitle('Meaningful Edges Results')
+                fig.add_subplot(3, 1, 1)
+                plt.axis('off')
+                plt.title('Scaled Meaningful Edges')
+                plt.imshow(resultFrame.scaledMeaningfulEdges, cmap='hot')
 
-                # fig.add_subplot(3, 1, 2)
-                # plt.axis('off')
-                # plt.title('Refined Meaningful Edges')
-                # plt.imshow(resultFrame.refinedMeaningfulEdges, cmap='hot')
+                fig.add_subplot(3, 1, 2)
+                plt.axis('off')
+                plt.title('Refined Meaningful Edges')
+                plt.imshow(resultFrame.refinedMeaningfulEdges, cmap='hot')
                 
-                # fig.add_subplot(3, 1, 3)
-                # plt.axis('off')
-                # plt.title('Good/Bad Edges')
-                # plt.imshow(rgbCpy, cmap='hot')
-                # plt.show()
+                fig.add_subplot(3, 1, 3)
+                plt.axis('off')
+                plt.title('Good/Bad Edges')
+                plt.imshow(rgbCpy, cmap='hot')
+                plt.show()
 
                 # save result
                 meaningfulEdges = resultFrame.refinedMeaningfulEdges

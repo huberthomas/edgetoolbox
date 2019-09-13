@@ -16,8 +16,8 @@ See the requirements.txt file for more information.
 
 Sample: 
 
-    conda create -n yourenv python=3
-    conda activate yourenv
+    conda create -n edgetoolbox python=3
+    conda activate edgetoolbox
     conda install pip
     pip install -r requirements.txt --user
 

@@ -211,22 +211,27 @@ class EdgeMatcher:
 
                 if scaledMeaningfulEdges is None:
                     h, w = best.shape[:2]
-                    scaledMeaningfulEdges = np.zeros((h, w))
+                    scaledMeaningfulEdges = np.zeros((h, w), np.float64)
 
                 # numBest = np.sum(best)
                 # numGood = np.sum(good)
                 # numWorse = np.sum(worse)
+                # total = numBest + numGood + numWorse
 
+                # weight = 0
                 # linear weight function
-                weight = 1#(numBest + numGood) / (numBest + numGood + numWorse)
+                # if total != 0:
+                #     weight = (numBest + numGood) / (numBest + numGood + numWorse)
+                #     weight = np.sin(Utilities.rescale(weight, 0, 1, 0, np.pi/2.0))
+
                 # sinoid weight function
-                #weight = np.sin(Utilities.rescale(weight, 0, 1, 0, np.pi/2.0))
                 tmpMeaningfulEdges = cv.add(best, good)
-                tmpMeaningfulEdges *= weight
+                # tmpMeaningfulEdges *= weight
                 scaledMeaningfulEdges = cv.add(scaledMeaningfulEdges, tmpMeaningfulEdges)                
 
         if counter > 0:
             scaledMeaningfulEdges /= counter
+
             return scaledMeaningfulEdges
         else:
             return None
@@ -263,14 +268,16 @@ class EdgeMatcher:
         # PARAMETER SETTING
         scales = [1.0, 0.5, 0.25]
         edgeThresMin = 50
-        edgeThresMax = 120
+        edgeThresMax = 100
         edgeKernelSize = 3
-        blurKernelSize = 5
-        scaledMeaningfulEdgesThreshold = 0.4
-        refinedMeaningfulEdgesThreshold = 0.75
+        blurKernelSize = 3
+        # scaledMeaningfulEdgesThreshold = 0.25#0.4
+        # refinedMeaningfulEdgesThreshold = 0.5#0.75
+        refinedMeaningfulEdgesHystMin = 0.25
+        refinedMeaningfulEdgesHystMax = 0.6
         # for scale 1 keep the parameters equal to the current frame
-        cannyThresholds = [(edgeThresMin, edgeThresMax), (25, 100), (25, 100)]
-        cannyKernelSizes = [(edgeKernelSize, blurKernelSize), (3, 5), (3, 3)]
+        cannyThresholds = [(edgeThresMin, edgeThresMax), (50, 100), (50, 100)]
+        cannyKernelSizes = [(edgeKernelSize, blurKernelSize), (3, 3), (3, 3)]
 
         #print('Frameset size is %d'%len(self.__frameSet))
 
@@ -312,22 +319,23 @@ class EdgeMatcher:
             logging.info('Projected %d frames and %d scaled frames in %f sec.' % (len(scaledThreadParam), len(scales), time.time() - start))
 
             # sum up and weight scaled results
-            scaledMeaningfulEdges = self.getProbabilityMap(reprojectedEdgesList)        
+            scaledEdgePredictions = self.getProbabilityMap(reprojectedEdgesList)        
 
-            if scaledMeaningfulEdges is None:
+            if scaledEdgePredictions is None:
                 h, w = frameFrom.rgb().shape[:2]
-                scaledMeaningfulEdges = np.zeros((h, w))
+                scaledEdgePredictions = np.zeros((h, w))
 
             # THRESHOLD intermediate results base on rescaled projections
-            if scaledMeaningfulEdgesThreshold != 0:         
-                scaledMeaningfulEdges[np.where(scaledMeaningfulEdges < scaledMeaningfulEdgesThreshold)] = 0
+            scaledEdgePredictions = ImageProcessing.hysteresis(scaledEdgePredictions, refinedMeaningfulEdgesHystMin, refinedMeaningfulEdgesHystMax)
+            # if scaledMeaningfulEdgesThreshold != 0:         
+            #     scaledEdgePredictions[np.where(scaledEdgePredictions < scaledMeaningfulEdgesThreshold)] = 0
             # remove isolated pixel
             if self.__minIsolatedPixelArea > 0:
-                _, thresScaledMeaningfulEdges = cv.threshold(scaledMeaningfulEdges, 0, 1, cv.THRESH_BINARY)
+                _, thresScaledMeaningfulEdges = cv.threshold(scaledEdgePredictions, 0, 1, cv.THRESH_BINARY)
                 _, removed = ImageProcessing.removeIsolatedPixels((thresScaledMeaningfulEdges).astype(np.uint8), self.__minIsolatedPixelArea)
-                scaledMeaningfulEdges[np.nonzero(removed)] = 0
+                scaledEdgePredictions[np.nonzero(removed)] = 0            
 
-            frameFrom.scaledMeaningfulEdges = scaledMeaningfulEdges
+            frameFrom.scaledMeaningfulEdges = scaledEdgePredictions
             # END OF SCALED RESPONSES
         
             # cm_hot = mpl.cm.get_cmap('hot')
@@ -410,8 +418,9 @@ class EdgeMatcher:
             refinedMeaningfulEdges = np.zeros((h, w))
 
         # THRESHOLD results based intermediate final scaled results
-        if refinedMeaningfulEdgesThreshold != 0:
-            refinedMeaningfulEdges[np.where(refinedMeaningfulEdges < refinedMeaningfulEdgesThreshold)] = 0
+        refinedMeaningfulEdges = ImageProcessing.hysteresis(refinedMeaningfulEdges, refinedMeaningfulEdgesHystMin, refinedMeaningfulEdgesHystMax)
+        # if refinedMeaningfulEdgesThreshold != 0:
+        #     refinedMeaningfulEdges[np.where(refinedMeaningfulEdges < refinedMeaningfulEdgesThreshold)] = 0
         # remove isolated pixel
         if self.__minIsolatedPixelArea > 0:
             _, thresScaledMeaningfulEdges = cv.threshold(refinedMeaningfulEdges, 0, 1, cv.THRESH_BINARY)
