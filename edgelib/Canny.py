@@ -10,6 +10,8 @@ class Canny:
     Canny algorithm.
 
     Refactored from https://github.com/FienSoP/canny_edge_detector/blob/master/canny_edge_detector.py
+
+    https://blog.sicara.com/opencv-edge-detection-tutorial-7c3303f10788
     '''
 
     def __init__(self, sigma: float = 1, kernelSize: int = 5, weakPixel: int = 75, strongPixel: int = 255, lowThreshold: float = 0.05, highThreshold: float = 0.15):

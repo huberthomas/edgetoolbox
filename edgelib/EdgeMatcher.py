@@ -52,6 +52,12 @@ class EdgeMatcher:
         self.__numOfThreads = mp.cpu_count()
         self.__minIsolatedPixelArea = 0
 
+    def clearFrameSet(self):
+        '''
+        Clear current frameset entries.
+        '''
+        self.__frameSet.clear()
+
     def setMinIsolatedPixelArea(self, minIsolatedPixelArea: int = None) -> None:
         '''
         Set the minimum isolated pixel area. During the process isolated pixel areas 
@@ -152,7 +158,7 @@ class EdgeMatcher:
 
         if len(self.__frameSet) <= self.__frameOffset:
             return None
-
+        
         h, w = frame.rgb().shape[:2]
         meaningfulEdges = np.zeros((h, w, 3))
         distTransMat = frame.distanceTransform()
@@ -267,16 +273,16 @@ class EdgeMatcher:
         
         # PARAMETER SETTING
         scales = [1.0, 0.5, 0.25]
-        edgeThresMin = 50
-        edgeThresMax = 100
+        edgeThresMin = 100
+        edgeThresMax = 150
         edgeKernelSize = 3
         blurKernelSize = 3
         # scaledMeaningfulEdgesThreshold = 0.25#0.4
         # refinedMeaningfulEdgesThreshold = 0.5#0.75
         refinedMeaningfulEdgesHystMin = 0.25
-        refinedMeaningfulEdgesHystMax = 0.6
+        refinedMeaningfulEdgesHystMax = 0.5
         # for scale 1 keep the parameters equal to the current frame
-        cannyThresholds = [(edgeThresMin, edgeThresMax), (50, 100), (50, 100)]
+        cannyThresholds = [(edgeThresMin, edgeThresMax), (100, 150), (100, 150)]
         cannyKernelSizes = [(edgeKernelSize, blurKernelSize), (3, 3), (3, 3)]
 
         #print('Frameset size is %d'%len(self.__frameSet))
@@ -291,7 +297,9 @@ class EdgeMatcher:
 
             # todo: determine edges as optional feature if boundaries are None
             if frameFrom.boundaries() is None:
+                # threshold detection via Otsu's method                                
                 cannyBoundaries = ImageProcessing.canny(frameFrom.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize)
+                #cannyBoundaries = ImageProcessing.autoCanny(frameFrom.rgb())
                 frameFrom.setBoundaries(cannyBoundaries)
 
             # SCALED RESPONSES
