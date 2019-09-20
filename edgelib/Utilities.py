@@ -11,6 +11,75 @@ Utilities and helper functions.
 '''
 
 
+def createTrainList(baseDir: str = None, gtDirs: List[str] = None, rgbDirs: List[str] = None, outputFileName: str = 'train_pair.lst', supportedExtensions: list = ['png', 'jpg', 'jpeg']):
+    '''
+    Create a train list that is used by BDCN for training.
+
+    inputDirs Directories that should be included in the training list.
+
+    gtDirs Base directory where the images are read.
+
+    rgbDirs RGB directories. Must be in the same order as the gtDirs.
+
+    outputFileName Output file name, train.lst
+
+    supportedExtensions These files are included in the training list.
+
+    e.g.
+    baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix'
+    gtDirs = [
+        'gt_edge_preserved/rgbd_dataset_freiburg2_desk',
+        'gt_edge_preserved/rgbd_dataset_freiburg2_xyz',
+        'gt_edge_preserved/rgbd_dataset_freiburg3_long_office_household',
+        'bsds500/gt'
+    ]
+    rgbDirs = [
+        'rgb/rgbd_dataset_freiburg2_desk',
+        'rgb/rgbd_dataset_freiburg2_xyz',
+        'rgb/rgbd_dataset_freiburg3_long_office_household',
+        'bsds500/rgb'
+    ]
+    outputFileName = 'train_pair_bsds_mix.lst'
+
+    if __name__ == '__main__':
+        createTrainList(baseDir, gtDirs, rgbDirs, outputFileName, ['png'])
+        
+    '''
+    if baseDir is None:
+        raise ValueError('Invalid base directory.')
+
+    if gtDirs is None:
+        raise ValueError('Invalid ground truth directories.')
+
+    if rgbDirs is None:
+        raise ValueError('Invalid RGB directories.')
+
+    if outputFileName is None:
+        raise ValueError('Invalid train list output filename.')
+
+    if len(gtDirs) != len(rgbDirs):
+        raise ValueError('Groundtruth directories must have the same size as the RGB directories.')
+
+    f = open(os.path.join(os.path.join(baseDir, outputFileName)), 'w')
+    lenGtDirs = len(gtDirs)
+    for i in range(0, lenGtDirs):
+        gtDir = gtDirs[i]
+        rgbDir = rgbDirs[i]
+
+        fileNames = getFileNames(os.path.join(baseDir, gtDirs[i]), supportedExtensions)
+
+        lenFileNames = len(fileNames)
+
+        for j in range(0, lenFileNames):
+            fileName = fileNames[j]
+            f.write('%s %s' % (os.path.join(rgbDir, fileName), os.path.join(gtDir, fileName)))
+
+            if j != lenFileNames - 1 or i != lenGtDirs - 1:
+                f.write('\n')
+
+    f.close()
+
+
 def getFileNames(inputDir: str = None, supportedExtensions: list = ['png', 'jpg', 'jpeg']) -> List[str]:
     '''
     Get files e.g. (png, jpg, jpeg) from an input directory. It is case insensitive to the extensions.
@@ -209,6 +278,7 @@ def rescale(val: float = 0, minVal: float = 0, maxVal: float = 0, newMinVal: flo
     '''
     return ((newMaxVal - newMinVal)/(maxVal - minVal)) * (val - maxVal) + newMaxVal
 
+
 def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
     '''
     Create tile view of images located in defined directory.
@@ -264,20 +334,20 @@ def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
         data.append([])
         for fileName in fileNames:
             data[i].append(os.path.join(dirPath, fileName))
-    
 
     th = '<tr>'
     for dirName in dirList:
-        th += '<th>%s</th>'%(os.path.basename(dirName))
+        th += '<th>%s</th>' % (os.path.basename(dirName))
     th += '</tr>'
-    
+
     tr = ''
     for i in range(0, counter):
         tr += '<tr>'
         for j in range(0, len(dirList)):
             link = data[j][i]
             tr += '<td>'
-            tr += '<a href="%s" target="_blank"><img src="%s" alt="%s" title="%s" style="calc(100%% / 7)"></a>'%(link, link, os.path.basename(link), os.path.join(os.path.basename(dirList[j]), os.path.basename(link)))
+            tr += '<a href="%s" target="_blank"><img src="%s" alt="%s" title="%s" style="calc(100%% / 7)"></a>' % (link,
+                                                                                                                   link, os.path.basename(link), os.path.join(os.path.basename(dirList[j]), os.path.basename(link)))
             tr += '</td>'
         tr += '</tr>'
 
@@ -296,7 +366,7 @@ def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
     %s
     </body>
     </html>
-    '''%(table)
+    ''' % (table)
 
     f = open(htmlFilePath, 'w')
     f.write(html)
