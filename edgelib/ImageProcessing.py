@@ -239,6 +239,11 @@ def canny(img: np.ndarray = None,
           highAccuracy: bool = True,
           blurKernelSize: int = 3) -> np.ndarray:
     '''
+    
+    Exlaination
+    https://blog.sicara.com/opencv-edge-detection-tutorial-7c3303f10788
+
+
     Process Canny edge detection on a defined input image.
 
     img OpenCV input image.
@@ -271,15 +276,82 @@ def canny(img: np.ndarray = None,
         raise ValueError('Wrong blur kernel size. Allowed are 3, 5, 7, ...')
 
     c = img.ndim
+    edgePreservedBlurred = cv.edgePreservingFilter(img, None, flags=2, sigma_r=0.6)
+
+    if c == 3:
+        img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+        edgePreservedBlurred = cv.cvtColor(edgePreservedBlurred, cv.COLOR_BGR2GRAY)
+    elif c == 4:
+        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
+        edgePreservedBlurred = cv.cvtColor(edgePreservedBlurred, cv.COLOR_BGRA2GRAY)
+
+    #blurredImg = cv.blur(img, (blurKernelSize, blurKernelSize))
+    # edge preserving
+    #blurredImg = cv.bilateralFilter(img, 9, 150, 150)
+
+    # fig = plt.figure(1)
+    # plt.subplot(121)
+    # plt.imshow(edgePreservedBlurred)
+    # plt.subplot(122)
+    # plt.imshow(otsuCanny(edgePreservedBlurred))
+    # plt.show()
+
+    #return cv.Canny(blurredImg, threshold1, threshold2, None, kernelSize, highAccuracy)
+    #return medianCanny(blurredImg)
+    return otsuCanny(edgePreservedBlurred)
+
+
+def otsuCanny(img) -> np.ndarray:
+    '''
+    Automatic Canny threshold detection via Otsu's method.
+    See https://en.wikipedia.org/wiki/Otsu%27s_method for more information.
+    https://www.meccanismocomplesso.org/en/opencv-python-the-otsus-binarization-for-thresholding/
+
+    img Input image.
+
+    Returns edge image.
+    '''
+    c = img.ndim
 
     if c == 3:
         img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     elif c == 4:
-        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
+        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)    
+    
+    otsuThresMax, _ = cv.threshold(img, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+    otsuThresMin = 0.5 * otsuThresMax
+    
+    return cv.Canny(img, otsuThresMin, otsuThresMax, None, 3, True)
 
-    blurredImg = cv.blur(img, (blurKernelSize, blurKernelSize))
+def medianCanny(img: np.ndarray = None,
+              sigma: float = 0.33) -> np.ndarray:
+    '''
+    Automatic Canny threshold detection via statistical distribution.
+    https://stackoverflow.com/questions/21324950/how-to-select-the-best-set-of-parameters-in-canny-edge-detection-algorithm-imple
+    https://www.pyimagesearch.com/2015/04/06/zero-parameter-automatic-canny-edge-detection-with-python-and-opencv/
 
-    return cv.Canny(blurredImg, threshold1, threshold2, None, kernelSize, highAccuracy)
+    img Input image.
+
+    sigma For threshold determination. Default is 0.33 which is typical used in datascience.
+
+    Returns edge image.
+    '''
+    # compute the median of the single channel pixel intensities
+    c = img.ndim
+
+    if c == 3:
+        img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    elif c == 4:
+        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)    
+    
+    v = np.median(img)
+    sigma = 0.33
+
+    # apply automatic Canny edge detection using the computed median
+    edgeThresMin = int(max(0, (1.0 - sigma) * v))
+    edgeThresMax = int(min(255, (1.0 + sigma) * v))
+
+    return cv.Canny(img, edgeThresMin, edgeThresMax, None, 3, True)
 
 
 def cannyAscendingThreshold(img: np.ndarray = None,
@@ -486,6 +558,7 @@ def projectMultiscaleEdges(frameFrom: EdgeMatcherFrame = None,
             scaledFrameTo.setRgb(cv.resize(frameTo.rgb(), (0, 0), fx=scale, fy=scale, interpolation=cv.INTER_AREA))
 
         scaledBoundaries = canny(scaledFrameTo.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize)
+        #scaledBoundaries = autoCanny(scaledFrameTo.rgb())
         scaledFrameTo.setBoundaries(scaledBoundaries)
         
         # fig.add_subplot(1, len(scales), s+1)
@@ -556,43 +629,102 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     frameToDistanceTransform = frameTo.distanceTransform()
 
     ## draw matches
-    keyPointsFrameFrom = []
-    keyPointsFrameTo = []
-    matches = []
+    # keyPointsFrameFrom = []
+    # keyPointsFrameTo = []
+    # matches = []
     ## end of draw matches
 
-    for u in range(0, frameFromW):
-        for v in range(0, frameFromH):
-            if frameFrom.boundaries().item((v, u)) == 0 or frameFrom.depth().item((v, u)) == 0:
-                continue
+    validV, validU = np.where(np.bitwise_and(frameFrom.boundaries() > 0, frameFrom.depth() > 0))
+    # project to world
+    PZ = frameFrom.depth()[validV, validU] / cameraFrom.depthScaleFactor()
+    PX = (validU - np.full_like(validU, cameraFrom.cx(), np.float64)) * (PZ / cameraFrom.fx())
+    PY = (validV - np.full_like(validV, cameraFrom.cy(), np.float64)) * (PZ / cameraFrom.fy())
+    # transform
+    A = np.dot(frameFrom.R(),[PX, PY, PZ]) + [np.full_like(PX, frameFrom.t()[0], np.float64), np.full_like(PY, frameFrom.t()[1], np.float64), np.full_like(PZ, frameFrom.t()[2], np.float64)]
+    Q = np.dot(frameTo.invT_R(), A) + [np.full_like(PX, frameTo.invT_t()[0], np.float64), np.full_like(PY, frameTo.invT_t()[1], np.float64), np.full_like(PZ, frameTo.invT_t()[2], np.float64)]
+    # rescale by dividing the z coordinate
+    Q = np.divide(Q[:2, :], Q[2, :])
+    # reproject to image plane
+    QX = Q[0] * cameraTo.fx() + np.full_like(PX, cameraTo.cx(), np.float64)
+    QY = Q[1] * cameraTo.fy() + np.full_like(PY, cameraTo.cy(), np.float64)
+    
+    invalidQX = np.where(np.logical_or(QX < 0, QX > frameToW-1))[0]
+    invalidQY = np.where(np.logical_or(QY < 0, QY > frameToH-1))[0]
 
-            z = np.float64(frameFrom.depth().item((v, u))) / np.float64(cameraFrom.depthScaleFactor())
-            # project to world
-            P = projectToWorld(cameraFrom, np.array((u, v, z), np.float64))
-            # transform
-            Q = np.dot(frameTo.invT_R(), np.dot(frameFrom.R(), P) + frameFrom.t()) + frameTo.invT_t()
-            # reproject to image plane
-            q = projectToImage(cameraTo, Q)
-            # boundary check
-            if q[0] < 0 or q[1] < 0 or q[0] > (frameToW - 1) or q[1] > (frameToH - 1):
-                continue
+    tmp = np.ones(QX.shape)
+    tmp[invalidQX] = 0
+    tmp[invalidQY] = 0
+    validIndices = np.where(tmp > 0)[0]
 
-            distVal = getInterpolatedElement(frameToDistanceTransform, q[0], q[1])
+    # validQX = np.mod(np.where(np.logical_or(QX >= 0, QX < frameToW-1))[0], frameToW)
+    # validQY = np.mod(np.where(np.logical_or(QY >= 0, QY < frameToH-1))[0], frameToH)
+    # print(validQY.max())
+    # frameToDistanceTransform.itemset(validQY, 0)
+    # fig = plt.figure(3)
+    # plt.imshow(frameToDistanceTransform)
+    # plt.show()
 
-            if distVal <= edgeDistanceLowerBoundary:
-                reprojectedEdges.itemset((v, u, 0), reprojectedEdges.item((v, u, 0)) + 1)
-                ## draw matches
-                # matchIndex = len(keyPointsFrameFrom)
-                # keyPointsFrameFrom.append(cv.KeyPoint(u, v, 1))
-                # keyPointsFrameTo.append(cv.KeyPoint(int(q[0]), int(q[1]), 1))
 
-                # if matchIndex % 50 == 0:
-                #     matches.append(cv.DMatch(matchIndex, matchIndex, 1))
-                ## end of draw matches
-            elif distVal > edgeDistanceLowerBoundary and distVal <= edgeDistanceUpperBoundary:
-                reprojectedEdges.itemset((v, u, 1), reprojectedEdges.item((v, u, 1)) + 1)
-            elif distVal > edgeDistanceUpperBoundary:
-                reprojectedEdges.itemset((v, u, 2), reprojectedEdges.item((v, u, 2)) + 1)
+    for i in range(0, len(validIndices)):
+        qx = QX[validIndices[i]]
+        qy = QY[validIndices[i]]
+        u = validU[validIndices[i]]
+        v = validV[validIndices[i]]
+
+        #distVal = frameToDistanceTransform.item(int(qy), int(qx))
+        distVal = getInterpolatedElement(frameToDistanceTransform, qx, qy)
+        
+        if distVal <= edgeDistanceLowerBoundary:
+            reprojectedEdges.itemset((v, u, 0), reprojectedEdges.item((v, u, 0)) + 1)
+            ## draw matches
+            # matchIndex = len(keyPointsFrameFrom)
+            # keyPointsFrameFrom.append(cv.KeyPoint(u, v, 1))
+            # keyPointsFrameTo.append(cv.KeyPoint(int(q[0]), int(q[1]), 1))
+
+            # if matchIndex % 200 == 0:
+            #     matches.append(cv.DMatch(matchIndex, matchIndex, 1))
+            ## end of draw matches
+        elif distVal > edgeDistanceLowerBoundary and distVal <= edgeDistanceUpperBoundary:
+            reprojectedEdges.itemset((v, u, 1), reprojectedEdges.item((v, u, 1)) + 1)
+        elif distVal > edgeDistanceUpperBoundary:
+            reprojectedEdges.itemset((v, u, 2), reprojectedEdges.item((v, u, 2)) + 1)
+
+    # fig = plt.figure(3)
+    # plt.imshow(reprojectedEdges)
+    # plt.show()
+    # print('asdfasdfasdfasdf')
+    # for i in range(0, 4):#len(validU)):
+    #     u = validU[i]
+    #     v = validV[i]
+
+    #     #z = np.float64(frameFrom.depth().item((v, u))) / np.float64(cameraFrom.depthScaleFactor())
+    #     z = PZ[i]
+    #     # project to world
+    #     P = projectToWorld(cameraFrom, np.array((u, v, z), np.float64))
+    #     # transform
+    #     Q = np.dot(frameTo.invT_R(), np.dot(frameFrom.R(), P) + frameFrom.t()) + frameTo.invT_t()
+    #     # reproject to image plane
+    #     q = projectToImage(cameraTo, Q)
+    #     # boundary check
+    #     if q[0] < 0 or q[1] < 0 or q[0] > (frameToW - 1) or q[1] > (frameToH - 1):
+    #         continue
+
+    #     distVal = getInterpolatedElement(frameToDistanceTransform, q[0], q[1])
+
+    #     if distVal <= edgeDistanceLowerBoundary:
+    #         reprojectedEdges.itemset((v, u, 0), reprojectedEdges.item((v, u, 0)) + 1)
+    #         ## draw matches
+    #         # matchIndex = len(keyPointsFrameFrom)
+    #         # keyPointsFrameFrom.append(cv.KeyPoint(u, v, 1))
+    #         # keyPointsFrameTo.append(cv.KeyPoint(int(q[0]), int(q[1]), 1))
+
+    #         # if matchIndex % 200 == 0:
+    #         #     matches.append(cv.DMatch(matchIndex, matchIndex, 1))
+    #         ## end of draw matches
+    #     elif distVal > edgeDistanceLowerBoundary and distVal <= edgeDistanceUpperBoundary:
+    #         reprojectedEdges.itemset((v, u, 1), reprojectedEdges.item((v, u, 1)) + 1)
+    #     elif distVal > edgeDistanceUpperBoundary:
+    #         reprojectedEdges.itemset((v, u, 2), reprojectedEdges.item((v, u, 2)) + 1)
 
     if result is not None:
         result[frameTo.uid] = reprojectedEdges
@@ -616,11 +748,11 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     # fig.suptitle('Multiscale Algo: %d %d'%(scaledFrameToBoundaries.shape))
     # plt.subplot(211)
     # plt.axis('off')
-    # plt.title('Output')
+    # plt.title('%s'%(frameFrom.uid))
     # plt.imshow(rgbDepthEdges)
     # plt.subplot(212)
     # plt.axis('off')
-    # plt.title('Matches')
+    # plt.title('Matches %s -> %s'%(frameFrom.uid, frameTo.uid))
     # plt.imshow(matchesImg)
     # plt.show()
 
