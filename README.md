@@ -10,15 +10,14 @@ For installation I would recommend using [Conda](https://docs.conda.io/projects/
 
 ### Dependencies
 
-See the requirements.txt file for more information.
+To install all necessary dependencies please use conda or pip. Conda is recommended because it creates its' own environment where it installs all needed packages independently from other projects.
 
-### Installation
+### Conda
 
-Sample: 
+    conda env create -f environment.yml
+    
+### Python pip
 
-    conda create -n edgetoolbox python=3
-    conda activate edgetoolbox
-    conda install pip
     pip install -r requirements.txt --user
 
 ## Datasets
