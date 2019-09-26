@@ -12,6 +12,7 @@ from .EdgeMatcherFrame import EdgeMatcherFrame
 Image processing helper functions.
 '''
 
+
 def hysteresis(img: np.ndarray = None, lowThreshold: float = 0.05, highThreshold: float = 0.15) -> None:
     '''
     Perform hysteresis on an image.
@@ -58,7 +59,47 @@ def hysteresis(img: np.ndarray = None, lowThreshold: float = 0.05, highThreshold
     return thres
 
 
+def extendImageCanvas(img: np.array = None, cols: int = 0, rows: int = 0) -> np.ndarray:
+    '''
+    Extend image canvas by mirroring the image in all directions.
 
+    img Input image.
+
+    cols New width.
+
+    rows New height.
+
+    Returns extended image with new dimensions.
+    '''
+    r, c = img.shape[:2]
+
+    assert(cols > c or rows > r, 'New image size must be greater than the old one.')
+
+    dr = rows - r
+    dc = cols - c
+
+    assert(dr >= 0 or dc >= 0, 'New image size is too big. Must be smaller or equal than twice the image size.')
+
+    # horizontal
+    flipudImg = np.flipud(img)
+    # vertical
+    fliplrImg = np.fliplr(img)
+    flipudlrImg = np.fliplr(flipudImg)
+    
+    if img.ndim < 3:
+        extendedImg = np.ones((rows, cols), img.dtype)
+        extendedImg[:r, :c] = img
+        extendedImg[r:, c:] = flipudlrImg[:dr, :dc]
+        extendedImg[r:, :c] = flipudImg[:dr, :c]
+        extendedImg[:r, c:] = fliplrImg[:r, :dc]
+    else:
+        extendedImg = np.ones((rows, cols, img.ndim), img.dtype)
+        extendedImg[:r, :c, :] = img
+        extendedImg[r:, c:, :] = flipudlrImg[:dr, :dc, :]
+        extendedImg[r:, :c, :] = flipudImg[:dr, :c, :]
+        extendedImg[:r, c:, :] = fliplrImg[:r, :dc, :]
+
+    return extendedImg
 
 
 def reconstructDepthImg(porousDepthImg: np.ndarray = None,
@@ -170,9 +211,9 @@ def removeIsolatedPixels(img: np.ndarray = None, minIsolatedPixelArea: int = 1, 
 
     if minIsolatedPixelArea < 0:
         minIsolatedPixelArea = abs(minIsolatedPixelArea)
-    
+
     if connectivity != 4 and connectivity != 8:
-        raise ValueError('Invalid connectivity value "%d".'%(connectivity))
+        raise ValueError('Invalid connectivity value "%d".' % (connectivity))
 
     output = cv.connectedComponentsWithStats(img, connectivity, cv.CV_32S)
 
@@ -316,15 +357,16 @@ def otsuCanny(img) -> np.ndarray:
     if c == 3:
         img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     elif c == 4:
-        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)    
-    
+        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
+
     otsuThresMax, _ = cv.threshold(img, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
     otsuThresMin = 0.5 * otsuThresMax
-    
+
     return cv.Canny(img, otsuThresMin, otsuThresMax, None, 3, True)
 
+
 def medianCanny(img: np.ndarray = None,
-              sigma: float = 0.33) -> np.ndarray:
+                sigma: float = 0.33) -> np.ndarray:
     '''
     Automatic Canny threshold detection via statistical distribution.
     https://stackoverflow.com/questions/21324950/how-to-select-the-best-set-of-parameters-in-canny-edge-detection-algorithm-imple
@@ -342,8 +384,8 @@ def medianCanny(img: np.ndarray = None,
     if c == 3:
         img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     elif c == 4:
-        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)    
-    
+        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
+
     v = np.median(img)
     sigma = 0.33
 
@@ -560,7 +602,7 @@ def projectMultiscaleEdges(frameFrom: EdgeMatcherFrame = None,
         scaledBoundaries = canny(scaledFrameTo.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize)
         #scaledBoundaries = autoCanny(scaledFrameTo.rgb())
         scaledFrameTo.setBoundaries(scaledBoundaries)
-        
+
         # fig.add_subplot(1, len(scales), s+1)
         # plt.title('%d'%s)
         # plt.imshow(scaledFrameTo.boundaries())
@@ -640,14 +682,15 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     PX = (validU - np.full_like(validU, cameraFrom.cx(), np.float64)) * (PZ / cameraFrom.fx())
     PY = (validV - np.full_like(validV, cameraFrom.cy(), np.float64)) * (PZ / cameraFrom.fy())
     # transform
-    A = np.dot(frameFrom.R(),[PX, PY, PZ]) + [np.full_like(PX, frameFrom.t()[0], np.float64), np.full_like(PY, frameFrom.t()[1], np.float64), np.full_like(PZ, frameFrom.t()[2], np.float64)]
+    A = np.dot(frameFrom.R(), [PX, PY, PZ]) + [np.full_like(PX, frameFrom.t()[0], np.float64), np.full_like(PY, frameFrom.t()[1], np.float64), np.full_like(PZ, frameFrom.t()[2], np.float64)]
     Q = np.dot(frameTo.invT_R(), A) + [np.full_like(PX, frameTo.invT_t()[0], np.float64), np.full_like(PY, frameTo.invT_t()[1], np.float64), np.full_like(PZ, frameTo.invT_t()[2], np.float64)]
+    #Q = np.dot(frameTo.invT_R(), A) + frameTo.invT_t()
     # rescale by dividing the z coordinate
     Q = np.divide(Q[:2, :], Q[2, :])
     # reproject to image plane
     QX = Q[0] * cameraTo.fx() + np.full_like(PX, cameraTo.cx(), np.float64)
     QY = Q[1] * cameraTo.fy() + np.full_like(PY, cameraTo.cy(), np.float64)
-    
+
     invalidQX = np.where(np.logical_or(QX < 0, QX > frameToW-1))[0]
     invalidQY = np.where(np.logical_or(QY < 0, QY > frameToH-1))[0]
 
@@ -655,15 +698,21 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     tmp[invalidQX] = 0
     tmp[invalidQY] = 0
     validIndices = np.where(tmp > 0)[0]
+    #validIndices = np.where(np.bitwise_or(invalidQX, invalidQY))
 
-    # validQX = np.mod(np.where(np.logical_or(QX >= 0, QX < frameToW-1))[0], frameToW)
-    # validQY = np.mod(np.where(np.logical_or(QY >= 0, QY < frameToH-1))[0], frameToH)
-    # print(validQY.max())
-    # frameToDistanceTransform.itemset(validQY, 0)
+    qy = np.floor(QY[validIndices]).astype(np.int64)
+    qx = np.floor(QX[validIndices]).astype(np.int64)
+    # distVal = frameToDistanceTransform[np.ix_(qy, qx)]
+
     # fig = plt.figure(3)
-    # plt.imshow(frameToDistanceTransform)
+    # plt.imshow(distVal)
     # plt.show()
 
+    # print('asdfasdfasdf')
+
+    # reprojectedEdges[np.where(distVal <= edgeDistanceLowerBoundary), 0] = 1
+    # reprojectedEdges[np.logical_and(np.where(distVal > edgeDistanceLowerBoundary), np.where(distVal <= edgeDistanceUpperBoundary)), 1] = 1
+    # reprojectedEdges[np.where(distVal > edgeDistanceUpperBoundary), 2] = 1
 
     for i in range(0, len(validIndices)):
         qx = QX[validIndices[i]]
@@ -673,9 +722,13 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
 
         #distVal = frameToDistanceTransform.item(int(qy), int(qx))
         distVal = getInterpolatedElement(frameToDistanceTransform, qx, qy)
-        
+
         if distVal <= edgeDistanceLowerBoundary:
             reprojectedEdges.itemset((v, u, 0), reprojectedEdges.item((v, u, 0)) + 1)
+        elif distVal > edgeDistanceLowerBoundary and distVal <= edgeDistanceUpperBoundary:
+            reprojectedEdges.itemset((v, u, 1), reprojectedEdges.item((v, u, 1)) + 1)
+        elif distVal > edgeDistanceUpperBoundary:
+            reprojectedEdges.itemset((v, u, 2), reprojectedEdges.item((v, u, 2)) + 1)
             ## draw matches
             # matchIndex = len(keyPointsFrameFrom)
             # keyPointsFrameFrom.append(cv.KeyPoint(u, v, 1))
@@ -684,10 +737,6 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
             # if matchIndex % 200 == 0:
             #     matches.append(cv.DMatch(matchIndex, matchIndex, 1))
             ## end of draw matches
-        elif distVal > edgeDistanceLowerBoundary and distVal <= edgeDistanceUpperBoundary:
-            reprojectedEdges.itemset((v, u, 1), reprojectedEdges.item((v, u, 1)) + 1)
-        elif distVal > edgeDistanceUpperBoundary:
-            reprojectedEdges.itemset((v, u, 2), reprojectedEdges.item((v, u, 2)) + 1)
 
     # fig = plt.figure(3)
     # plt.imshow(reprojectedEdges)
