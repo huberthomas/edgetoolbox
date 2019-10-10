@@ -1,12 +1,14 @@
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import multiprocessing as mp
 import copy
 from typing import List
 from .Camera import Camera
 from .Frame import Frame
 from .EdgeMatcherFrame import EdgeMatcherFrame
+import time
 
 '''
 Image processing helper functions.
@@ -676,32 +678,104 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     # matches = []
     ## end of draw matches
 
+    '''
+     ## draw matches
+    # keyPointsFrameFrom = []
+    # keyPointsFrameTo = []
+    # matches = []
+    ## end of draw matches
     validV, validU = np.where(np.bitwise_and(frameFrom.boundaries() > 0, frameFrom.depth() > 0))
-    # project to world
-    PZ = frameFrom.depth()[validV, validU] / cameraFrom.depthScaleFactor()
-    PX = (validU - np.full_like(validU, cameraFrom.cx(), np.float64)) * (PZ / cameraFrom.fx())
-    PY = (validV - np.full_like(validV, cameraFrom.cy(), np.float64)) * (PZ / cameraFrom.fy())
-    # transform
-    A = np.dot(frameFrom.R(), [PX, PY, PZ]) + [np.full_like(PX, frameFrom.t()[0], np.float64), np.full_like(PY, frameFrom.t()[1], np.float64), np.full_like(PZ, frameFrom.t()[2], np.float64)]
-    Q = np.dot(frameTo.invT_R(), A) + [np.full_like(PX, frameTo.invT_t()[0], np.float64), np.full_like(PY, frameTo.invT_t()[1], np.float64), np.full_like(PZ, frameTo.invT_t()[2], np.float64)]
-    #Q = np.dot(frameTo.invT_R(), A) + frameTo.invT_t()
-    # rescale by dividing the z coordinate
+
+    validEdges = np.zeros(frameFrom.boundaries().shape, np.float64)
+    validEdges[validV, validU] = 1
+
+    transform = np.dot(cameraTo.cameraMatrix(), np.dot(frameTo.R(), frameFrom.t()) + frameTo.invT_t())
+
+    frameFromDepth = frameFrom.depth() / cameraFrom.depthScaleFactor()
+    #txChannel = validEdges * transform[0]
+    #tyChannel = validEdges * transform[1]
+    #tzChannel = validEdges * transform[2]
+    zChannel = validEdges * frameFromDepth
+    q = np.array([validU, validV, np.ones_like(validU)])
+    qq = np.array([frameFromDepth[validV, validU], frameFromDepth[validV, validU], frameFromDepth[validV, validU]])
+    
+    q = q*qq
+
+    #q = q * [frameFromDepth[validV, validU], frameFromDepth[validV, validU], frameFromDepth[validV, validU]]
+    q = np.dot(cameraTo.cameraMatrix(), np.dot(frameTo.invT_R(), np.dot(frameFrom.R(), np.dot(np.linalg.inv(cameraFrom.cameraMatrix()), q))))
+    Q = q + [np.full_like(validU, transform[0], np.float64), np.full_like(validU, transform[1], np.float64), np.full_like(validU, transform[2], np.float64)]
     Q = np.divide(Q[:2, :], Q[2, :])
-    # reproject to image plane
-    QX = Q[0] * cameraTo.fx() + np.full_like(PX, cameraTo.cx(), np.float64)
-    QY = Q[1] * cameraTo.fy() + np.full_like(PY, cameraTo.cy(), np.float64)
+    #q = np.add(q, [txChannel, tyChannel, tzChannel])
+    '''
+    validV, validU = np.where(np.bitwise_and(frameFrom.boundaries() > 0, frameFrom.depth() > 0))
+    validZ = frameFrom.depth()[validV, validU] / cameraFrom.depthScaleFactor()
+   
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d') 
+    # ax.scatter(tmpP[0], tmpP[1], tmpP[2])
+    # plt.show()
 
-    invalidQX = np.where(np.logical_or(QX < 0, QX > frameToW-1))[0]
-    invalidQY = np.where(np.logical_or(QY < 0, QY > frameToH-1))[0]
+    ## working
+    # start = time.time()
+    # validUZ = validU * validZ
+    # validVZ = validV * validZ
+    # tmpP = np.array([validUZ, validVZ, validZ], np.float64)
+    # CqInvTq = np.dot(cameraTo.cameraMatrix(), frameTo.invT_t())
+    # CqInvRq = np.dot(cameraTo.cameraMatrix(), frameTo.invT_R())
+    # CqInvRqRpInvCp = np.dot(CqInvRq, np.dot(frameFrom.R(), cameraFrom.invCameraMatrix()))
+    # CqInvRqTp = np.dot(CqInvRq, frameTo.t())
+    # CqInvTqCqInvRqTp = CqInvRqTp + CqInvTq
+    # q_hat = np.dot(CqInvRqRpInvCp, tmpP)
+    # q_hat = np.add(q_hat, np.full_like(q_hat, [np.full_like(validUZ, CqInvTqCqInvRqTp[0], np.float64), np.full_like(validUZ, CqInvTqCqInvRqTp[1], np.float64), np.full_like(validUZ, CqInvTqCqInvRqTp[2], np.float64)], np.float64))
+    # Q = np.divide(q_hat[:2, :], q_hat[2, :])
+    # QX = Q[0]
+    # QY = Q[1]
+    # version1 = time.time() - start
+    ## working end
 
-    tmp = np.ones(QX.shape)
-    tmp[invalidQX] = 0
-    tmp[invalidQY] = 0
-    validIndices = np.where(tmp > 0)[0]
+    ## working
+    # q_hat = Cq * Tq * invTp⁻¹ * Cp⁻¹_hat * p_hat
+    # start = time.time()
+    tmpP = np.array([validU * validZ, validV * validZ, validZ], np.float64)
+    C_hat = np.vstack([cameraFrom.invCameraMatrix(), [0,0,1]])
+    invTC_hat = np.vstack([np.dot(frameFrom.T(), C_hat), [0,0,1]])
+    q_hat = np.dot(np.dot(cameraTo.cameraMatrix(), np.dot(frameTo.invT(), invTC_hat)), tmpP)
+    Q = np.divide(q_hat[:2, :], q_hat[2, :])
+    QX = Q[0]
+    QY = Q[1]
+    # validIndices = np.where(np.logical_and(np.logical_and(QX >= 0, QX <= frameToW-1), np.logical_and(QY >= 0, QY <= frameToH-1)))[0]
+    # version2 = time.time() - start
+    ## working end
+
+    ## working
+    # project to world
+    # start = time.time()
+    # PZ = frameFrom.depth()[validV, validU] / cameraFrom.depthScaleFactor()
+    # PX = (validU - np.full_like(validU, cameraFrom.cx(), np.float64)) * (PZ / cameraFrom.fx())
+    # PY = (validV - np.full_like(validV, cameraFrom.cy(), np.float64)) * (PZ / cameraFrom.fy())
+
+    # # transform
+    # A = np.dot(frameFrom.R(), [PX, PY, PZ]) + [np.full_like(PX, frameFrom.t()[0], np.float64), np.full_like(PY, frameFrom.t()[1], np.float64), np.full_like(PZ, frameFrom.t()[2], np.float64)]
+    # Q = np.dot(frameTo.invT_R(), A) + [np.full_like(PX, frameTo.invT_t()[0], np.float64), np.full_like(PY, frameTo.invT_t()[1], np.float64), np.full_like(PZ, frameTo.invT_t()[2], np.float64)]
+    # #Q = np.dot(frameTo.invT_R(), A) + frameTo.invT_t()
+    # # rescale by dividing the z coordinate
+    # Q = np.divide(Q[:2, :], Q[2, :])
+    # # reproject to image plane
+    # QX = Q[0] * cameraTo.fx() + np.full_like(PX, cameraTo.cx(), np.float64)
+    # QY = Q[1] * cameraTo.fy() + np.full_like(PY, cameraTo.cy(), np.float64)
+    # version3 = time.time() - start
+    # working end
+
+    ## version2 fastest
+    # print('%.6f %.6f %.6f'%(version1, version2, version3))
+
+    validIndices = np.where(np.logical_and(np.logical_and(QX >= 0, QX <= frameToW-1), np.logical_and(QY >= 0, QY <= frameToH-1)))[0]
+    # working
+    # qy = np.floor(QY[validIndices]).astype(np.int64)
+    # qx = np.floor(QX[validIndices]).astype(np.int64)
+    # working end
+   
     #validIndices = np.where(np.bitwise_or(invalidQX, invalidQY))
-
-    qy = np.floor(QY[validIndices]).astype(np.int64)
-    qx = np.floor(QX[validIndices]).astype(np.int64)
     # distVal = frameToDistanceTransform[np.ix_(qy, qx)]
 
     # fig = plt.figure(3)
@@ -715,10 +789,11 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     # reprojectedEdges[np.where(distVal > edgeDistanceUpperBoundary), 2] = 1
 
     for i in range(0, len(validIndices)):
-        qx = QX[validIndices[i]]
-        qy = QY[validIndices[i]]
-        u = validU[validIndices[i]]
-        v = validV[validIndices[i]]
+        index = validIndices[i]
+        qx = QX.item(index)
+        qy = QY.item(index)
+        u = validU.item(index)
+        v = validV.item(index)
 
         #distVal = frameToDistanceTransform.item(int(qy), int(qx))
         distVal = getInterpolatedElement(frameToDistanceTransform, qx, qy)
@@ -737,43 +812,6 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
             # if matchIndex % 200 == 0:
             #     matches.append(cv.DMatch(matchIndex, matchIndex, 1))
             ## end of draw matches
-
-    # fig = plt.figure(3)
-    # plt.imshow(reprojectedEdges)
-    # plt.show()
-    # print('asdfasdfasdfasdf')
-    # for i in range(0, 4):#len(validU)):
-    #     u = validU[i]
-    #     v = validV[i]
-
-    #     #z = np.float64(frameFrom.depth().item((v, u))) / np.float64(cameraFrom.depthScaleFactor())
-    #     z = PZ[i]
-    #     # project to world
-    #     P = projectToWorld(cameraFrom, np.array((u, v, z), np.float64))
-    #     # transform
-    #     Q = np.dot(frameTo.invT_R(), np.dot(frameFrom.R(), P) + frameFrom.t()) + frameTo.invT_t()
-    #     # reproject to image plane
-    #     q = projectToImage(cameraTo, Q)
-    #     # boundary check
-    #     if q[0] < 0 or q[1] < 0 or q[0] > (frameToW - 1) or q[1] > (frameToH - 1):
-    #         continue
-
-    #     distVal = getInterpolatedElement(frameToDistanceTransform, q[0], q[1])
-
-    #     if distVal <= edgeDistanceLowerBoundary:
-    #         reprojectedEdges.itemset((v, u, 0), reprojectedEdges.item((v, u, 0)) + 1)
-    #         ## draw matches
-    #         # matchIndex = len(keyPointsFrameFrom)
-    #         # keyPointsFrameFrom.append(cv.KeyPoint(u, v, 1))
-    #         # keyPointsFrameTo.append(cv.KeyPoint(int(q[0]), int(q[1]), 1))
-
-    #         # if matchIndex % 200 == 0:
-    #         #     matches.append(cv.DMatch(matchIndex, matchIndex, 1))
-    #         ## end of draw matches
-    #     elif distVal > edgeDistanceLowerBoundary and distVal <= edgeDistanceUpperBoundary:
-    #         reprojectedEdges.itemset((v, u, 1), reprojectedEdges.item((v, u, 1)) + 1)
-    #     elif distVal > edgeDistanceUpperBoundary:
-    #         reprojectedEdges.itemset((v, u, 2), reprojectedEdges.item((v, u, 2)) + 1)
 
     if result is not None:
         result[frameTo.uid] = reprojectedEdges

@@ -399,14 +399,14 @@ class EdgeMatcher:
 
         logging.info('Projected %d meaningful scaled frames in %f sec.' % (len(meaningfulEdgesList), time.time() - start))
 
-        refinedProjectedEdgesList = []
-        finalRefinedEdgesList = []
+        stableProjectedEdgesList = []
+        finalStableEdgesList = []
 
         # visualize intermediate scaled boundaries
         # fig = plt.figure(1)
         # fig.suptitle('Reprojected To Strong Scaled Edges')
         for key, res in meaningfulEdgesList.items():
-            refinedProjectedEdgesList.append(res)
+            stableProjectedEdgesList.append(res)
             # fig.add_subplot(2, int(len(meaningfulEdgesList.values())/2.0), len(refinedProjectedEdgesList))
             # scaledRes = res.copy()
             # scaledBest, scaledGood, scaledWorse = cv.split(scaledRes)
@@ -418,25 +418,25 @@ class EdgeMatcher:
             # plt.axis('off')
 
          # sum up and weight scaled results
-        finalRefinedEdgesList.append(refinedProjectedEdgesList)
-        refinedMeaningfulEdges = self.getProbabilityMap(finalRefinedEdgesList)        
+        finalStableEdgesList.append(stableProjectedEdgesList)
+        stableMeaningfulEdges = self.getProbabilityMap(finalStableEdgesList)        
 
-        if refinedMeaningfulEdges is None:
+        if stableMeaningfulEdges is None:
             h, w = frameFrom.rgb().shape[:2]
-            refinedMeaningfulEdges = np.zeros((h, w))
+            stableMeaningfulEdges = np.zeros((h, w))
 
         # THRESHOLD results based intermediate final scaled results
-        refinedMeaningfulEdges = ImageProcessing.hysteresis(refinedMeaningfulEdges, refinedMeaningfulEdgesHystMin, refinedMeaningfulEdgesHystMax)
+        stableMeaningfulEdges = ImageProcessing.hysteresis(stableMeaningfulEdges, refinedMeaningfulEdgesHystMin, refinedMeaningfulEdgesHystMax)
         # if refinedMeaningfulEdgesThreshold != 0:
         #     refinedMeaningfulEdges[np.where(refinedMeaningfulEdges < refinedMeaningfulEdgesThreshold)] = 0
         # remove isolated pixel
         if self.__minIsolatedPixelArea > 0:
-            _, thresScaledMeaningfulEdges = cv.threshold(refinedMeaningfulEdges, 0, 1, cv.THRESH_BINARY)
+            _, thresScaledMeaningfulEdges = cv.threshold(stableMeaningfulEdges, 0, 1, cv.THRESH_BINARY)
             _, removed = ImageProcessing.removeIsolatedPixels((thresScaledMeaningfulEdges).astype(np.uint8), self.__minIsolatedPixelArea)
-            refinedMeaningfulEdges[np.nonzero(removed)] = 0
+            stableMeaningfulEdges[np.nonzero(removed)] = 0
 
         frameFrom = self.__frameSet[frameFromIndex]
-        frameFrom.refinedMeaningfulEdges = refinedMeaningfulEdges
+        frameFrom.refinedMeaningfulEdges = stableMeaningfulEdges
         ## END OF REFINING
 
         self.__frameSet.pop(0)

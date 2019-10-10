@@ -15,6 +15,7 @@ class Camera:
         Constructor.
         '''
         self.__cameraMatrix = np.zeros((3, 3), np.float64)
+        self.__invCameraMatrix = np.zeros((3, 3), np.float64)
         self.__distortionCoefficients = np.zeros(5, np.float64)
         self.__depthScaleFactor = np.float64(1.0)
 
@@ -69,6 +70,14 @@ class Camera:
         '''
         return self.__cameraMatrix
 
+    def invCameraMatrix(self) -> np.ndarray:
+        '''
+        Get the inverse camera matrix.
+
+        Returns the inverse 3x3 camera matrix.
+        '''
+        return self.__invCameraMatrix
+
     def depthScaleFactor(self) -> float:
         '''
         Get the depth scale factor.
@@ -101,6 +110,7 @@ class Camera:
             raise ValueError('Invalid camera matrix. Must be 3x3, not %dx%d.' % (cameraMatrix.shape))
 
         self.__cameraMatrix = cameraMatrix.astype(np.float64)
+        self.__invCameraMatrix = np.linalg.inv(self.__cameraMatrix)
 
     def setDistortionCoefficients(self, distortionCoefficients: np.ndarray = None) -> None:
         '''
