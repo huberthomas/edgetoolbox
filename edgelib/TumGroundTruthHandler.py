@@ -38,10 +38,52 @@ class TumGroundTruthHandler:
         '''
         pass
 
+    def __fileCorrespondence(self, filePath: str = None) -> dict:
+        '''
+        Reads correspondence file and returns dictionary with entries.
+
+        filePath Path to the correspondence file, e.g. rgb.txt file like in the ETH3D dataset.
+            11784.337488890 depth/11784.337488.png
+            11784.374352455 depth/11784.374352.png
+            11784.411215782 depth/11784.411215.png
+            11784.448079109 depth/11784.448079.png
+
+        Returns dictionary with readen entries.
+        '''
+        if(filePath is None):
+            raise ValueError('Invalid file path.')
+
+        correspondences = {}
+
+        try:
+            f = open(filePath, 'r')
+
+            for line in f:
+                if line.count('#') or len(line) == 0:
+                    continue
+
+                entries = line.split(' ')
+
+                if len(entries) < 2:
+                    logging.info('Wrong file format? Less than 2 entries. Skipping line "%s"' % (line))
+                    continue
+
+                timestamp = np.float64(entries[0])
+                relFilePath = Path(entries[1]).stem
+                correspondences.update({relFilePath: timestamp})
+
+            f.close()
+        except Exception as e:
+            raise e
+
+        return correspondences
+
     def associate(self, groundTruthPath: str = None,
                   rgbDirPath: str = None,
                   depthDirPath: str = None,
-                  maxDifference: float = 0.2) -> None:
+                  maxDifference: float = 0.2,
+                  rgbFile: str = None,
+                  depthFile: str = None) -> None:
         '''
         TumGroundTruth object finds correspondences between files
         that are captured by 30Hz and the high-speed tracking ground truth
@@ -54,9 +96,24 @@ class TumGroundTruthHandler:
         depthDirPath Absolute directory path to the depth directory.
 
         maxDifference Max time difference that is allowed to hold the value, otherwise it is skipped.
+
+        rgbFile RGB association file, e.g. rgb.txt.
+
+        depthFile Depth association file, e.g. depth.txt.
         '''
         gtList = self.__readRawGroundTruthFile(groundTruthPath)
-        dirAssociations = self.__associateDirectoryFiles(rgbDirPath, depthDirPath, maxDifference)
+
+
+        rgbCorrespondences = {}
+        depthCorrespondences = {}
+
+        if rgbFile is not None:
+            rgbCorrespondences = self.__fileCorrespondence(rgbFile)
+
+        if depthFile is not None: 
+            depthCorrespondences = self.__fileCorrespondence(depthFile)
+
+        dirAssociations = self.__associateDirectoryFiles(rgbDirPath, depthDirPath, maxDifference, rgbCorrespondences, depthCorrespondences)
         self.__associations = self.__associateGroundTruthWithDir(gtList, dirAssociations)
 
     def save(self, filePath: str = None) -> None:
@@ -146,7 +203,11 @@ class TumGroundTruthHandler:
         '''
         Reads the ground truth information out of a defined file.
 
-        tumGtPath File path to the ground truth file.
+        tumGtPath File path to the ground truth file, e.g.
+        # timestamp tx ty tz qx qy qz qw
+        11873.240000000 -1.2150835027514 0.75432647351722 1.4685295511364 -0.22243192269128 0.86350037964587 -0.38800252585617 0.23312051400195
+        11873.250000000 -1.2098883980529 0.74163830982265 1.4657813349346 -0.22270440288169 0.86362409233908 -0.38739438237336 0.2334132999085
+        11873.260000000 -1.2046015590052 0.72900775516528 1.4631370750175 -0.22283701229784 0.86372016942534 -0.38699356489541 0.23359605220888
 
         Returns datastructure that contains ground truth.
         '''
@@ -226,7 +287,9 @@ class TumGroundTruthHandler:
 
     def __associateDirectoryFiles(self, rgbDirPath: str = None,
                                   depthDirPath: str = None,
-                                  maxDifference: float = 0.2) -> List[List[str]]:
+                                  maxDifference: float = 0.2,
+                                  rgbCorrespondences: dict = {},
+                                  depthCorrespondences: dict = {}) -> List[List[str]]:
         '''
         Associate files of the RGB and depth directory by their filename which is a timestamp of the record.
 
@@ -259,15 +322,28 @@ class TumGroundTruthHandler:
         associations = []
         ascIndex = 0
 
+
         for rgbFile in rgbFiles:
-            rgbTimestamp = np.float64(Path(rgbFile).resolve().stem)
+            rgbTimestamp = Path(rgbFile).resolve().stem
+
+            if len(rgbCorrespondences) != 0:
+                rgbTimestamp = rgbCorrespondences[rgbTimestamp]
+            else:
+                rgbTimestamp = np.float64(rgbTimestamp)
+
 
             foundCandidateIndex = -1
             minDifference = sys.float_info.max
 
             for i in range(ascIndex, len(depthFiles)):
                 depthFile = depthFiles[i]
-                depthTimestamp = np.float64(Path(depthFile).resolve().stem)
+                depthTimestamp = Path(depthFile).resolve().stem
+                
+                if len(depthCorrespondences) != 0:
+                    depthTimestamp = depthCorrespondences[depthTimestamp]
+                else:
+                    depthTimestamp = np.float64(depthTimestamp)
+
 
                 diff = abs(rgbTimestamp - depthTimestamp)
 
