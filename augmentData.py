@@ -117,6 +117,16 @@ def main() -> None:
 if __name__ == '__main__':
     # needed to avoid errors during multithread pool creation
     # https://docs.python.org/3/library/multiprocessing.html#multiprocessing.set_start_method
+    '''
+    python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_edge_preserved/rgbd_dataset_freiburg2_desk -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_aug_edge_preserved/rgbd_dataset_freiburg2_desk
+    python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_edge_preserved/rgbd_dataset_freiburg2_desk -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_aug_edge_preserved/rgbd_dataset_freiburg2_desk
+
+    python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_edge_preserved/rgbd_dataset_freiburg2_xyz -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_aug_edge_preserved/rgbd_dataset_freiburg2_xyz
+    python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_edge_preserved/rgbd_dataset_freiburg2_xyz -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_aug_edge_preserved/rgbd_dataset_freiburg2_xyz
+
+    python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_edge_preserved/rgbd_dataset_freiburg3_long_office_household -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_aug_edge_preserved/rgbd_dataset_freiburg3_long_office_household
+    python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_edge_preserved/rgbd_dataset_freiburg3_long_office_household -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_aug_edge_preserved/rgbd_dataset_freiburg3_long_office_household
+    '''
     mp.set_start_method('spawn', True)
     logging.basicConfig(format='%(asctime)s %(levelname)s:\t%(message)s', level=logging.DEBUG)
     print('#################')
@@ -124,14 +134,3 @@ if __name__ == '__main__':
     print('#################')
     main()
 
-
-'''
-python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt/rgbd_dataset_freiburg2_desk -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_aug/rgbd_dataset_freiburg2_desk
-python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb/rgbd_dataset_freiburg2_desk -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_aug/rgbd_dataset_freiburg2_desk
-
-python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt/rgbd_dataset_freiburg2_xyz -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_aug/rgbd_dataset_freiburg2_xyz
-python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb/rgbd_dataset_freiburg2_xyz -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_aug/rgbd_dataset_freiburg2_xyz
-
-python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt/rgbd_dataset_freiburg3_long_office_household -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/gt_aug/rgbd_dataset_freiburg3_long_office_household
-python augmentData.py -na 8 -i /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb/rgbd_dataset_freiburg3_long_office_household -o /run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix/rgb_aug/rgbd_dataset_freiburg3_long_office_household
-'''
