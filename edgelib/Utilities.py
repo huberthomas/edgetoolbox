@@ -3,13 +3,12 @@ import cv2 as cv
 import math
 import glob
 import fnmatch
-
+import shutil
 from typing import List
 
 '''
 Utilities and helper functions.
 '''
-
 
 def createTrainList(baseDir: str = None, gtDirs: List[str] = None, rgbDirs: List[str] = None, outputFileName: str = 'train_pair.lst', supportedExtensions: list = ['png', 'jpg', 'jpeg']):
     '''
@@ -26,24 +25,83 @@ def createTrainList(baseDir: str = None, gtDirs: List[str] = None, rgbDirs: List
     supportedExtensions These files are included in the training list.
 
     e.g.
-    baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix'
+    baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/stableEdgesTest2'
     gtDirs = [
-        'gt_edge_preserved/rgbd_dataset_freiburg2_desk',
-        'gt_edge_preserved/rgbd_dataset_freiburg2_xyz',
-        'gt_edge_preserved/rgbd_dataset_freiburg3_long_office_household',
-        'bsds500/gt'
+        'gt/rgbd_dataset_freiburg1_360',
+        'gt/rgbd_dataset_freiburg1_desk',
+        'gt/rgbd_dataset_freiburg1_desk2',
+        'gt/rgbd_dataset_freiburg1_floor',
+        'gt/rgbd_dataset_freiburg1_plant',
+        'gt/rgbd_dataset_freiburg1_room',
+        'gt/rgbd_dataset_freiburg1_rpy',
+        'gt/rgbd_dataset_freiburg1_teddy',
+        'gt/rgbd_dataset_freiburg1_xyz',
+        'gt/rgbd_dataset_freiburg2_360_hemisphere',
+        'gt/rgbd_dataset_freiburg2_coke',
+        'gt/rgbd_dataset_freiburg2_desk',
+        'gt/rgbd_dataset_freiburg2_desk_with_person',
+        'gt/rgbd_dataset_freiburg2_dishes',
+        'gt/rgbd_dataset_freiburg2_flowerbouquet',
+        'gt/rgbd_dataset_freiburg2_flowerbouquet_brownbackground',
+        'gt/rgbd_dataset_freiburg2_large_no_loop',
+        'gt/rgbd_dataset_freiburg2_metallic_sphere',
+        'gt/rgbd_dataset_freiburg2_metallic_sphere2',
+        'gt/rgbd_dataset_freiburg2_pioneer_360',
+        'gt/rgbd_dataset_freiburg2_pioneer_slam',
+        'gt/rgbd_dataset_freiburg2_xyz',
+        'gt/rgbd_dataset_freiburg3_cabinet',
+        'gt/rgbd_dataset_freiburg3_large_cabinet',
+        'gt/rgbd_dataset_freiburg3_long_office_household',
+        'gt/rgbd_dataset_freiburg3_nostructure_texture_far',
+        'gt/rgbd_dataset_freiburg3_nostructure_texture_near_withloop',
+        'gt/rgbd_dataset_freiburg3_sitting_static',
+        'gt/rgbd_dataset_freiburg3_structure_notexture_far',
+        'gt/rgbd_dataset_freiburg3_structure_notexture_near',
+        'gt/rgbd_dataset_freiburg3_structure_texture_far',
+        'gt/rgbd_dataset_freiburg3_structure_texture_near',
+        'gt/rgbd_dataset_freiburg3_teddy',
+        'gt/rgbd_dataset_freiburg3_walking_xyz'
     ]
     rgbDirs = [
+        'rgb/rgbd_dataset_freiburg1_360',
+        'rgb/rgbd_dataset_freiburg1_desk',
+        'rgb/rgbd_dataset_freiburg1_desk2',
+        'rgb/rgbd_dataset_freiburg1_floor',
+        'rgb/rgbd_dataset_freiburg1_plant',
+        'rgb/rgbd_dataset_freiburg1_room',
+        'rgb/rgbd_dataset_freiburg1_rpy',
+        'rgb/rgbd_dataset_freiburg1_teddy',
+        'rgb/rgbd_dataset_freiburg1_xyz',
+        'rgb/rgbd_dataset_freiburg2_360_hemisphere',
+        'rgb/rgbd_dataset_freiburg2_coke',
         'rgb/rgbd_dataset_freiburg2_desk',
+        'rgb/rgbd_dataset_freiburg2_desk_with_person',
+        'rgb/rgbd_dataset_freiburg2_dishes',
+        'rgb/rgbd_dataset_freiburg2_flowerbouquet',
+        'rgb/rgbd_dataset_freiburg2_flowerbouquet_brownbackground',
+        'rgb/rgbd_dataset_freiburg2_large_no_loop',
+        'rgb/rgbd_dataset_freiburg2_metallic_sphere',
+        'rgb/rgbd_dataset_freiburg2_metallic_sphere2',
+        'rgb/rgbd_dataset_freiburg2_pioneer_360',
+        'rgb/rgbd_dataset_freiburg2_pioneer_slam',
         'rgb/rgbd_dataset_freiburg2_xyz',
+        'rgb/rgbd_dataset_freiburg3_cabinet',
+        'rgb/rgbd_dataset_freiburg3_large_cabinet',
         'rgb/rgbd_dataset_freiburg3_long_office_household',
-        'bsds500/rgb'
+        'rgb/rgbd_dataset_freiburg3_nostructure_texture_far',
+        'rgb/rgbd_dataset_freiburg3_nostructure_texture_near_withloop',
+        'rgb/rgbd_dataset_freiburg3_sitting_static',
+        'rgb/rgbd_dataset_freiburg3_structure_notexture_far',
+        'rgb/rgbd_dataset_freiburg3_structure_notexture_near',
+        'rgb/rgbd_dataset_freiburg3_structure_texture_far',
+        'rgb/rgbd_dataset_freiburg3_structure_texture_near',
+        'rgb/rgbd_dataset_freiburg3_teddy',
+        'rgb/rgbd_dataset_freiburg3_walking_xyz'
     ]
-    outputFileName = 'train_pair_bsds_mix.lst'
+    outputFileName = 'train_pair.lst'
 
     if __name__ == '__main__':
         createTrainList(baseDir, gtDirs, rgbDirs, outputFileName, ['png'])
-        
     '''
     if baseDir is None:
         raise ValueError('Invalid base directory.')
@@ -79,7 +137,7 @@ def createTrainList(baseDir: str = None, gtDirs: List[str] = None, rgbDirs: List
 
     f.close()
 
-
+    
 def getFileNames(inputDir: str = None, supportedExtensions: list = ['png', 'jpg', 'jpeg']) -> List[str]:
     '''
     Get files e.g. (png, jpg, jpeg) from an input directory. It is case insensitive to the extensions.
@@ -108,7 +166,6 @@ def getFileNames(inputDir: str = None, supportedExtensions: list = ['png', 'jpg'
         res.extend(fnmatch.filter(dirList, '*.%s' % (pattern)))
 
     return res
-
 
 def rotateImage(img: any = None, angle: float = None, removeCropBorders: bool = True) -> any:
     """
@@ -371,3 +428,67 @@ def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
     f = open(htmlFilePath, 'w')
     f.write(html)
     f.close()
+
+
+def copyRgbFromGtList(rgbSrcDir: str = None, gtSrcDir: str = None, rgbDstDir: str = None) -> None:
+    '''
+    Copy corresponding RGB file from the GT directory to a new RGB destination dir. Looks in GT directory
+    for image filenames and copies RGB equivalent to the destination folder.
+
+    rgbSrcDir RGB image source directory.
+
+    gtSrcDir Ground truth source directory.
+
+    rgbDst RGB image destination directory.
+
+    e.g.
+    baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets'
+    trainDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/stableEdges2/'
+    subDir = [
+        'rgbd_dataset_freiburg1_360',
+        'rgbd_dataset_freiburg1_desk',
+        'rgbd_dataset_freiburg1_desk2',
+        'rgbd_dataset_freiburg1_floor',
+        'rgbd_dataset_freiburg1_plant',
+        'rgbd_dataset_freiburg1_room',
+        'rgbd_dataset_freiburg1_rpy',
+        'rgbd_dataset_freiburg1_teddy',
+        'rgbd_dataset_freiburg1_xyz',
+        'rgbd_dataset_freiburg2_360_hemisphere',
+        'rgbd_dataset_freiburg2_coke',
+        'rgbd_dataset_freiburg2_desk',
+        'rgbd_dataset_freiburg2_desk_with_person',
+        'rgbd_dataset_freiburg2_dishes',
+        'rgbd_dataset_freiburg2_flowerbouquet',
+        'rgbd_dataset_freiburg2_flowerbouquet_brownbackground',
+        'rgbd_dataset_freiburg2_large_no_loop',
+        'rgbd_dataset_freiburg2_metallic_sphere',
+        'rgbd_dataset_freiburg2_metallic_sphere2',
+        'rgbd_dataset_freiburg2_pioneer_360',
+        'rgbd_dataset_freiburg2_pioneer_slam',
+        'rgbd_dataset_freiburg2_xyz',
+        'rgbd_dataset_freiburg3_cabinet',
+        'rgbd_dataset_freiburg3_large_cabinet',
+        'rgbd_dataset_freiburg3_long_office_household',
+        'rgbd_dataset_freiburg3_nostructure_texture_far',
+        'rgbd_dataset_freiburg3_nostructure_texture_near_withloop',
+        'rgbd_dataset_freiburg3_sitting_static',
+        'rgbd_dataset_freiburg3_structure_notexture_far',
+        'rgbd_dataset_freiburg3_structure_notexture_near',
+        'rgbd_dataset_freiburg3_structure_texture_far',
+        'rgbd_dataset_freiburg3_structure_texture_near',
+        'rgbd_dataset_freiburg3_teddy',
+        'rgbd_dataset_freiburg3_walking_xyz'
+    ]
+    for i in range(0, len(subDir)):
+        copyRgbFromGtList(os.path.join(baseDir, subDir[i], 'rgb'), os.path.join(trainDir, 'gt', subDir[i]), os.path.join(trainDir, 'rgb', subDir[i]))
+    '''
+    gtFileNames = getFileNames(gtSrcDir)
+
+    for filename in gtFileNames:
+        srcRgbFile = os.path.join(rgbSrcDir, filename)
+        if os.path.exists(srcRgbFile):
+            shutil.copyfile(srcRgbFile, os.path.join(rgbDstDir, filename))
+        else:
+            print('Missing file: %s'%(srcRgbFile))
+

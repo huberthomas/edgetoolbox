@@ -258,19 +258,6 @@ class EdgeMatcher:
         if not frame.isValid():
             raise ValueError('Invalid frame.')
 
-        # fill frame set
-        self.__frameSet.append(frame)
-
-        factor = 1
-
-        if mode == EdgeMatcherMode.CENTERPROJECT:
-            factor = 2
-
-        if len(self.__frameSet) < factor * 2 * self.__frameOffset + 1:
-            return None
-
-        maxFrameOffset = factor * self.__frameOffset + 1
-        
         # PARAMETER SETTING
         scales = [1.0, 0.5, 0.25]
         edgeThresMin = 100
@@ -285,6 +272,24 @@ class EdgeMatcher:
         cannyThresholds = [(edgeThresMin, edgeThresMax), (100, 150), (100, 150)]
         cannyKernelSizes = [(edgeKernelSize, blurKernelSize), (3, 3), (3, 3)]
 
+        # preprocess multiscale boundary and distance transform
+        for s in scales:
+            boundaries = ImageProcessing.edgePreservedOtsuCanny(cv.resize(frame.rgb(), (0, 0), fx=s, fy=s, interpolation=cv.INTER_AREA))
+            frame.updateMultiscaleBoundaries(s, boundaries)
+
+        # fill frame set
+        self.__frameSet.append(frame)
+
+        factor = 1
+
+        if mode == EdgeMatcherMode.CENTERPROJECT:
+            factor = 2
+
+        if len(self.__frameSet) < factor * 2 * self.__frameOffset + 1:
+            return None
+
+        maxFrameOffset = factor * self.__frameOffset + 1
+
         #print('Frameset size is %d'%len(self.__frameSet))
 
         for i in range(0, maxFrameOffset):
@@ -295,12 +300,11 @@ class EdgeMatcher:
 
             frameFrom = self.__frameSet[frameFromIndex]
 
-            # todo: determine edges as optional feature if boundaries are None
-            if frameFrom.boundaries() is None:
-                # threshold detection via Otsu's method                                
-                cannyBoundaries = ImageProcessing.canny(frameFrom.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize)
-                #cannyBoundaries = ImageProcessing.autoCanny(frameFrom.rgb())
-                frameFrom.setBoundaries(cannyBoundaries)
+            # # todo: determine edges as optional feature if boundaries are None
+            # if frameFrom.boundaries() is None:
+            #     # threshold detection via Otsu's method                                
+            #     cannyBoundaries = ImageProcessing.canny(frameFrom.rgb(), edgeThresMin, edgeThresMax, edgeKernelSize, True, blurKernelSize)
+            #     frameFrom.setBoundaries(cannyBoundaries)
 
             # SCALED RESPONSES
             reprojectedEdgesList = Manager().list() # needed for multithread pool results
@@ -343,11 +347,13 @@ class EdgeMatcher:
                 _, removed = ImageProcessing.removeIsolatedPixels((thresScaledMeaningfulEdges).astype(np.uint8), self.__minIsolatedPixelArea)
                 scaledEdgePredictions[np.nonzero(removed)] = 0            
 
-            frameFrom.scaledMeaningfulEdges = scaledEdgePredictions
+            frameFrom.scaledStableEdgePredictions = scaledEdgePredictions
+            frameFrom.scaledStableEdges = cv.threshold(scaledEdgePredictions, 0, 255, cv.THRESH_BINARY)[1].astype(np.uint8)
+            frameFrom.scaledStableEdgesDistanceTransform = cv.distanceTransform(255 - frameFrom.scaledStableEdges, cv.DIST_L2, cv.DIST_MASK_PRECISE)
             # END OF SCALED RESPONSES
         
             # cm_hot = mpl.cm.get_cmap('hot')
-            # im = cm_hot(frameFrom.scaledMeaningfulEdges)
+            # im = cm_hot(frameFrom.scaledStableEdgePredictions)
             # im = np.uint8(im * 255)
             # im = cv.cvtColor(im, cv.COLOR_BGR2BGRA)
             # im[np.where(frameFrom.boundaries() == 0)] = [0, 0, 0, 255]
@@ -371,8 +377,7 @@ class EdgeMatcher:
             maxFrameOffset -= 1
 
         frameFromCpy = copy.deepcopy(self.__frameSet[frameFromIndex])
-        _, frameFromCpyBoundaries = cv.threshold(frameFromCpy.scaledMeaningfulEdges, 0, 255, cv.THRESH_BINARY)
-        frameFromCpy.setBoundaries(frameFromCpyBoundaries.astype(np.uint8))
+        frameFromCpy.setBoundaries(frameFromCpy.scaledStableEdges, frameFromCpy.scaledStableEdgesDistanceTransform)
 
         meaningfulEdgesList = Manager().dict() # needed for multithread pool results
 
@@ -389,8 +394,8 @@ class EdgeMatcher:
             print('projecting \t%d->%d'% (frameFromIndex, frameToIndex))
 
             frameToCpy = copy.deepcopy(self.__frameSet[frameToIndex])
-            _, frameToCpyBoundaries = cv.threshold(frameToCpy.scaledMeaningfulEdges, 0, 255, cv.THRESH_BINARY)
-            frameToCpy.setBoundaries(frameToCpyBoundaries.astype(np.uint8))
+            frameToCpy.setBoundaries(frameToCpy.scaledStableEdges, frameToCpy.scaledStableEdgesDistanceTransform)
+
             meaningfulThreadParam.append((frameFromCpy, frameToCpy, self.__camera, self.__camera, (self.__edgeDistanceLowerBoundary, self.__edgeDistanceUpperBoundary), meaningfulEdgesList))
 
         pool = mp.Pool(processes=self.__numOfThreads)

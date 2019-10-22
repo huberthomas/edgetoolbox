@@ -343,8 +343,26 @@ def canny(img: np.ndarray = None,
     #return medianCanny(blurredImg)
     return otsuCanny(edgePreservedBlurred)
 
+def edgePreservedOtsuCanny(img: np.ndarray) -> np.ndarray:
+    '''
+    Processes edge preserved filter in combination with Otsu's threshold detection method
+    for the Canny algorithm.
 
-def otsuCanny(img) -> np.ndarray:
+    img Input image. Multichannel will be converted to single channel.
+    '''
+    c = img.ndim
+    edgePreservedBlurred = cv.edgePreservingFilter(img, None, flags=2, sigma_r=0.6)
+
+    if c == 3:
+        img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+        edgePreservedBlurred = cv.cvtColor(edgePreservedBlurred, cv.COLOR_BGR2GRAY)
+    elif c == 4:
+        img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
+        edgePreservedBlurred = cv.cvtColor(edgePreservedBlurred, cv.COLOR_BGRA2GRAY)
+
+    return otsuCanny(edgePreservedBlurred)
+
+def otsuCanny(img: np.ndarray) -> np.ndarray:
     '''
     Automatic Canny threshold detection via Otsu's method.
     See https://en.wikipedia.org/wiki/Otsu%27s_method for more information.
@@ -589,6 +607,43 @@ def projectMultiscaleEdges(frameFrom: EdgeMatcherFrame = None,
     # fig = plt.figure(3)
 
     for s in range(0, len(scales)):
+        scale = scales[s]
+        assert (scale != 0), 'Invalid scale "%f". Must be greater than 0.' % (scale)
+
+        scaledCamera = copy.deepcopy(camera)
+        scaledCamera.rescale(scale)
+
+        # rescale values
+        scaledEdgeDistanceLowerBoundary = edgeDistanceLowerBoundary * scale
+        scaledEdgeDistanceUpperBoundary = edgeDistanceUpperBoundary * scale
+
+        scaledReprojectedEdgesList.append(projectEdges(frameFrom, frameTo, camera, scaledCamera, (scaledEdgeDistanceLowerBoundary, scaledEdgeDistanceUpperBoundary), None, scale))
+
+    # plt.show()
+    result.append(scaledReprojectedEdgesList)
+    return scaledReprojectedEdgesList
+
+
+def projectMultiscaleEdges2(frameFrom: EdgeMatcherFrame = None,
+                           frameTo: EdgeMatcherFrame = None,
+                           camera: Camera = None,
+                           edgeDistanceBoundaries: tuple = (0, 0),
+                           scales: List[float] = [1],
+                           cannyThresholds: List[tuple] = [(50, 100)],
+                           cannyKernelSizes: List[tuple] = [(3, 3)],
+                           result: List[any] = None) -> dict:
+    '''
+    '''
+    edgeDistanceLowerBoundary = edgeDistanceBoundaries[0]
+    edgeDistanceUpperBoundary = edgeDistanceBoundaries[1]
+    scaledReprojectedEdgesList = []
+
+    if len(cannyThresholds) < len(scales) and len(cannyKernelSizes) < len(scales):
+        raise ValueError('Invalid parameter settings.')
+
+    # fig = plt.figure(3)
+
+    for s in range(0, len(scales)):
         edgeThresMin = cannyThresholds[s][0]
         edgeThresMax = cannyThresholds[s][1]
         edgeKernelSize = cannyKernelSizes[s][0]
@@ -622,13 +677,13 @@ def projectMultiscaleEdges(frameFrom: EdgeMatcherFrame = None,
     result.append(scaledReprojectedEdgesList)
     return scaledReprojectedEdgesList
 
-
 def projectEdges(frameFrom: EdgeMatcherFrame = None,
                  frameTo: EdgeMatcherFrame = None,
                  cameraFrom: Camera = None,
                  cameraTo: Camera = None,
                  edgeDistanceBoundaries: tuple = (0, 0),
-                 result: {} = None) -> np.ndarray:
+                 result: {} = None,
+                 scale: float = None) -> np.ndarray:
     '''
     Project edges from one frame to another.
 
@@ -666,11 +721,20 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     edgeDistanceLowerBoundary = edgeDistanceBoundaries[0]
     edgeDistanceUpperBoundary = edgeDistanceBoundaries[1]
 
-    frameFromH, frameFromW = frameFrom.boundaries().shape
-    frameToH, frameToW = frameTo.boundaries().shape
+    if scale is None:
+        frameFromBoundaries = frameFrom.boundaries()
+        frameToBoundaries = frameTo.boundaries()
+        frameToDistanceTransform = frameTo.distanceTransform()
+    else:
+        frameFromBoundaries = frameFrom.multiscaleBoundaries[1]
+        frameToBoundaries = frameTo.multiscaleBoundaries[scale]
+        frameToDistanceTransform = frameTo.multiscaleDistanceTransform[scale]
+
+    frameFromH, frameFromW = frameFromBoundaries.shape
+    frameToH, frameToW = frameToBoundaries.shape
 
     reprojectedEdges = np.zeros((frameFromH, frameFromW, 3))
-    frameToDistanceTransform = frameTo.distanceTransform()
+
 
     ## draw matches
     # keyPointsFrameFrom = []
@@ -684,9 +748,9 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     # keyPointsFrameTo = []
     # matches = []
     ## end of draw matches
-    validV, validU = np.where(np.bitwise_and(frameFrom.boundaries() > 0, frameFrom.depth() > 0))
+    validV, validU = np.where(np.bitwise_and(frameFromBoundaries > 0, frameFrom.depth() > 0))
 
-    validEdges = np.zeros(frameFrom.boundaries().shape, np.float64)
+    validEdges = np.zeros(frameFromBoundaries.shape, np.float64)
     validEdges[validV, validU] = 1
 
     transform = np.dot(cameraTo.cameraMatrix(), np.dot(frameTo.R(), frameFrom.t()) + frameTo.invT_t())
@@ -707,7 +771,7 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     Q = np.divide(Q[:2, :], Q[2, :])
     #q = np.add(q, [txChannel, tyChannel, tzChannel])
     '''
-    validV, validU = np.where(np.bitwise_and(frameFrom.boundaries() > 0, frameFrom.depth() > 0))
+    validV, validU = np.where(np.bitwise_and(frameFromBoundaries > 0, frameFrom.depth() > 0))
     validZ = frameFrom.depth()[validV, validU] / cameraFrom.depthScaleFactor()
    
     # fig = plt.figure()
@@ -720,13 +784,11 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     # validUZ = validU * validZ
     # validVZ = validV * validZ
     # tmpP = np.array([validUZ, validVZ, validZ], np.float64)
-    # CqInvTq = np.dot(cameraTo.cameraMatrix(), frameTo.invT_t())
-    # CqInvRq = np.dot(cameraTo.cameraMatrix(), frameTo.invT_R())
-    # CqInvRqRpInvCp = np.dot(CqInvRq, np.dot(frameFrom.R(), cameraFrom.invCameraMatrix()))
-    # CqInvRqTp = np.dot(CqInvRq, frameTo.t())
-    # CqInvTqCqInvRqTp = CqInvRqTp + CqInvTq
-    # q_hat = np.dot(CqInvRqRpInvCp, tmpP)
-    # q_hat = np.add(q_hat, np.full_like(q_hat, [np.full_like(validUZ, CqInvTqCqInvRqTp[0], np.float64), np.full_like(validUZ, CqInvTqCqInvRqTp[1], np.float64), np.full_like(validUZ, CqInvTqCqInvRqTp[2], np.float64)], np.float64))
+    # CqInvRqtpAndCqInvtq = np.add(np.dot(cameraTo.cameraMatrix(), np.dot(frameTo.invT_R(), frameFrom.t())), np.dot(cameraTo.cameraMatrix(), frameTo.invT_t()))
+    # CqInvRqtpAndCqInvtq = np.full_like(tmpP, [np.full_like(validUZ, CqInvRqtpAndCqInvtq[0], np.float64), np.full_like(validUZ, CqInvRqtpAndCqInvtq[1], np.float64), np.full_like(validUZ, CqInvRqtpAndCqInvtq[2], np.float64)], np.float64)
+    # q_hat = np.dot(cameraTo.cameraMatrix(), np.dot(frameTo.invT_R(), np.dot(frameFrom.R(), cameraFrom.invCameraMatrix())))
+    # q_hat = np.dot(q_hat, tmpP)
+    # q_hat = np.add(q_hat, CqInvRqtpAndCqInvtq)
     # Q = np.divide(q_hat[:2, :], q_hat[2, :])
     # QX = Q[0]
     # QY = Q[1]
@@ -734,7 +796,7 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     ## working end
 
     ## working
-    # q_hat = Cq * Tq * invTp⁻¹ * Cp⁻¹_hat * p_hat
+    # q_hat = Cq * Tq⁻¹ * invTp * Cp⁻¹_hat * p_hat
     # start = time.time()
     tmpP = np.array([validU * validZ, validV * validZ, validZ], np.float64)
     C_hat = np.vstack([cameraFrom.invCameraMatrix(), [0,0,1]])
@@ -769,7 +831,7 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     ## version2 fastest
     # print('%.6f %.6f %.6f'%(version1, version2, version3))
 
-    validIndices = np.where(np.logical_and(np.logical_and(QX >= 0, QX <= frameToW-1), np.logical_and(QY >= 0, QY <= frameToH-1)))[0]
+    validIndices = np.where(np.logical_and(np.logical_and(QX >= 0, QX < frameToW-1), np.logical_and(QY >= 0, QY < frameToH-1)))[0]
     # working
     # qy = np.floor(QY[validIndices]).astype(np.int64)
     # qx = np.floor(QX[validIndices]).astype(np.int64)
@@ -781,8 +843,6 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     # fig = plt.figure(3)
     # plt.imshow(distVal)
     # plt.show()
-
-    # print('asdfasdfasdf')
 
     # reprojectedEdges[np.where(distVal <= edgeDistanceLowerBoundary), 0] = 1
     # reprojectedEdges[np.logical_and(np.where(distVal > edgeDistanceLowerBoundary), np.where(distVal <= edgeDistanceUpperBoundary)), 1] = 1
@@ -822,7 +882,7 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     # overlayRgb[np.where(good > 0)]=[255, 255, 0]
     # overlayRgb[np.where(worse > 0)]=[255, 0, 0]
     # scaledFrameToRgb = frameTo.rgb().copy()
-    # scaledFrameToBoundaries = frameTo.boundaries().copy()
+    # scaledFrameToBoundaries = frameToBoundaries.copy()
     # scaledFrameToDistanceTransform = copy.deepcopy(frameTo.distanceTransform())
     # scaledFrameToRgb[np.where(scaledFrameToBoundaries > 0)] = [255, 255, 255]
     # scaledFrameToDistanceTransform[np.where(scaledFrameToBoundaries > 0)] = [255]

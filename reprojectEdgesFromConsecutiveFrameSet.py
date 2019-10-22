@@ -129,12 +129,11 @@ def main() -> None:
     '''
     try:
         args = parseArgs()
-        args = checkInputParameter(args)
 
         # python reprojectEdgesFromConsecutiveFrameSet.py  -c  -o  -p 3 -f 3 -l 2 -u 2 -mipa 30
 
+        # trainRgbBase = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix'
         allBase = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/all'
-        trainRgbBase = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/mix'
         datasetBase = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets'
 
         subDir = [
@@ -144,27 +143,58 @@ def main() -> None:
             # 'rgbd_dataset_freiburg1_room',
             # 'rgbd_dataset_freiburg1_rpy',
             # 'rgbd_dataset_freiburg1_xyz',
-            'rgbd_dataset_freiburg2_desk',
-            'rgbd_dataset_freiburg2_xyz',
-            'rgbd_dataset_freiburg3_long_office_household',
+            # 'rgbd_dataset_freiburg2_desk',
+            # 'rgbd_dataset_freiburg2_xyz',
+            # 'rgbd_dataset_freiburg3_long_office_household',
+
+            # 'rgbd_dataset_freiburg1_360',
+            # 'rgbd_dataset_freiburg1_floor',
+            # 'rgbd_dataset_freiburg1_teddy',
+            # 'rgbd_dataset_freiburg2_360_hemisphere',
+            # 'rgbd_dataset_freiburg2_coke',
+            # 'rgbd_dataset_freiburg2_desk_with_person',
+            # 'rgbd_dataset_freiburg2_dishes',
+            # 'rgbd_dataset_freiburg2_flowerbouquet',
+            # 'rgbd_dataset_freiburg2_flowerbouquet_brownbackground',
+            # 'rgbd_dataset_freiburg2_large_no_loop',
+            # 'rgbd_dataset_freiburg2_metallic_sphere',
+            # 'rgbd_dataset_freiburg2_metallic_sphere2',
+            # 'rgbd_dataset_freiburg2_pioneer_360',
+            # 'rgbd_dataset_freiburg2_pioneer_slam',
+
+            'rgbd_dataset_freiburg3_cabinet',
+            'rgbd_dataset_freiburg3_large_cabinet',
+            'rgbd_dataset_freiburg3_nostructure_texture_far',
+            'rgbd_dataset_freiburg3_nostructure_texture_near_withloop',
+            'rgbd_dataset_freiburg3_sitting_static',
+            'rgbd_dataset_freiburg3_structure_notexture_far',
+            'rgbd_dataset_freiburg3_structure_notexture_near',
+            'rgbd_dataset_freiburg3_structure_texture_far',
+            'rgbd_dataset_freiburg3_structure_texture_near',
+            'rgbd_dataset_freiburg3_teddy',
+            'rgbd_dataset_freiburg3_walking_xyz',
         ]
 
         for i in range(0, len(subDir)):
-            args.rgbDir = os.path.join(trainRgbBase, 'rgb', subDir[i])
+            args.rgbDir = os.path.join(datasetBase, subDir[i], 'rgb')
             args.depthDir = os.path.join(datasetBase, subDir[i], 'depth')
-            args.maskDir = os.path.join(allBase, subDir[i], 'level0/canny')
+            #args.maskDir = os.path.join(allBase, subDir[i], 'level0/canny')
             args.camCalibFile = os.path.join(datasetBase, subDir[i], 'camera_calib_schenk.yml')
             args.groundTruthFile = os.path.join(datasetBase, subDir[i], 'groundtruth_associated.txt')
-            args.outputDir = os.path.join(trainRgbBase, 'gt_tmp', subDir[i])
-            args.frameOffset = 3#4
+            args.outputDir = os.path.join(allBase, subDir[i], 'level0', 'stableEdgesFo2')
+            args.frameOffset = 2
             args.lowerEdgeDistanceBoundary = 3
             args.upperEdgeDistanceBoundary = args.lowerEdgeDistanceBoundary
             args.projectionMode = 3
             args.inpaintDepth = 2
             args.minIsolatedPixelArea = 30
+            args = checkInputParameter(args)
             print(Utilities.argsToStr(args))
 
             # write configuration to output directory
+            if not os.path.exists(args.outputDir):
+                os.makedirs(args.outputDir)
+
             f = open(os.path.join(args.outputDir, 'settings.txt'), 'w')
             f.write(Utilities.argsToStr(args))
             f.close()
@@ -191,7 +221,21 @@ def main() -> None:
             f = open(os.path.join(args.outputDir, 'records.txt'), 'w')
             f.write('# timestamp d<=%d %d<d<=%d d>%d\n' % (args.lowerEdgeDistanceBoundary, args.lowerEdgeDistanceBoundary, args.upperEdgeDistanceBoundary, args.upperEdgeDistanceBoundary))
 
-            for a in gtHandler.data():
+            data = list(gtHandler.data())
+            total = len(data)
+            
+            # if total > 1000:
+            #     total = 1000
+
+            startIndex = 0
+            # if total < startIndex:
+            #     continue
+
+            for j in range(startIndex, total):
+                # if j > total - 1:
+                #     continue
+
+                a = data[j]
                 if not os.path.exists(os.path.join(args.rgbDir, a.rgb)):
                     logging.info('Skipping %s. File not found.' % (a.rgb))
                     continue
@@ -214,7 +258,6 @@ def main() -> None:
                 frame.uid = a.rgb  # a.gt.timestamp
                 frame.setRgb(rgb)
                 frame.setDepth(depth)
-                #frame.setBoundaries(mask)
                 frame.setT(a.gt.q, a.gt.t)
 
                 start = time.time()
@@ -224,30 +267,36 @@ def main() -> None:
                     continue
 
                 logging.info('Meaningful edges processed in %f sec.' % (time.time() - start))
-                cleanedEdges = resultFrame.boundaries().copy()
-                cleanedEdges[np.nonzero(resultFrame.refinedMeaningfulEdges)] = 0
+
+                if 1 in resultFrame.multiscaleBoundaries:
+                    cleanedEdges = resultFrame.multiscaleBoundaries[1].copy()
+                    cleanedEdges[np.nonzero(resultFrame.refinedMeaningfulEdges)] = 0
+                else:
+                    cleanedEdges = resultFrame.boundaries().copy()
+                    cleanedEdges[np.nonzero(resultFrame.refinedMeaningfulEdges)] = 0
 
                 rgbCpy = resultFrame.rgb().copy()
                 rgbCpy[np.nonzero(cleanedEdges)] = [255, 0, 0]
                 rgbCpy[np.nonzero(resultFrame.refinedMeaningfulEdges)] = [0, 255, 0]
 
-                fig = plt.figure(2)
-                fig.suptitle('Meaningful Edges Results')
-                fig.add_subplot(3, 1, 1)
-                plt.axis('off')
-                plt.title('Scaled Meaningful Edges')
-                plt.imshow(resultFrame.scaledMeaningfulEdges, cmap='hot')
+                # fig = plt.figure(2)
+                # fig.suptitle('Meaningful Edges Results')
+                # fig.add_subplot(3, 1, 1)
+                # plt.axis('off')
+                # plt.title('Scaled Meaningful Edges')
+                # plt.imshow(resultFrame.scaledStableEdges, cmap='hot')
 
-                fig.add_subplot(3, 1, 2)
-                plt.axis('off')
-                plt.title('Refined Meaningful Edges')
-                plt.imshow(resultFrame.refinedMeaningfulEdges, cmap='hot')
-                
-                fig.add_subplot(3, 1, 3)
-                plt.axis('off')
-                plt.title('Good/Bad Edges')
-                plt.imshow(rgbCpy, cmap='hot')
-                plt.show()
+                # fig.add_subplot(3, 1, 2)
+                # plt.axis('off')
+                # plt.title('Refined Meaningful Edges')
+                # plt.imshow(resultFrame.refinedMeaningfulEdges, cmap='hot')
+
+                # fig.add_subplot(3, 1, 3)
+                # plt.axis('off')
+                # plt.title('Good/Bad Edges')
+                # plt.imshow(rgbCpy, cmap='hot')
+                # plt.show()
+                # exit(0)
 
                 # save result
                 meaningfulEdges = resultFrame.refinedMeaningfulEdges

@@ -86,18 +86,24 @@ class Frame:
         '''
         return self.__boundaries
 
-    def setBoundaries(self, boundaries: np.ndarray = None) -> None:
+    def setBoundaries(self, boundaries: np.ndarray = None, distanceTransform: np.ndarray = None) -> None:
         '''
         Set the boundaries image file.
 
         boundaries Boundaries file.
+
+        distanceTransform Set the distance transform. If not available, it will be determined.
         '''
         if boundaries is None:
             raise ValueError('Invalid boundaries file.')
 
 
         self.__boundaries = boundaries
-        self.__distanceTransform = cv.distanceTransform(255 - boundaries, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+
+        if distanceTransform is None:
+            self.__distanceTransform = cv.distanceTransform(255 - boundaries, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+        else:
+            self.__distanceTransform = distanceTransform
 
     def distanceTransform(self) -> np.ndarray:
         '''

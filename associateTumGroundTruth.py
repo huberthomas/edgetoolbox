@@ -15,16 +15,16 @@ def checkInputParameter(args: any) -> any:
 
     Returns parsed arguments. Throws exception if error occurs.
     '''
-    if args.groundTruthFile == None or not os.path.exists(args.groundTruthFile):
+    if args.groundTruthFile is None or not os.path.exists(args.groundTruthFile):
         raise ValueError('Invalid ground truth file.')
 
-    if args.rgbDir == None or not os.path.exists(args.rgbDir):
+    if args.rgbDir is None or not os.path.exists(args.rgbDir):
         raise ValueError('Invalid RGB image directory.')
 
-    if args.depthDir == None or not os.path.exists(args.depthDir):
+    if args.depthDir is None or not os.path.exists(args.depthDir):
         raise ValueError('Invalid depth image directory.')
 
-    if args.outputFile == None or len(args.outputFile) == 0:
+    if args.outputFile is None or len(args.outputFile) == 0:
         raise ValueError('Invalid output file.')
 
     if args.maxDifference < 0:
@@ -47,6 +47,8 @@ def parseArgs() -> any:
     parser.add_argument('-r', '--rgbDir', type=str, default=None, required=True, help='RGB image directory.')
     parser.add_argument('-d', '--depthDir', type=str, default=None, required=True, help='Depth image directory.')
     parser.add_argument('-o', '--outputFile', type=str, default=None, required=True, help='Result associated ground truth file.')
+    parser.add_argument('-rf', '--rgbFile', type=str, default=None, required=False, help='RGB association file, e.g. rgb.txt.')
+    parser.add_argument('-df', '--depthFile', type=str, default=None, required=False, help='Depth association file, e.g. depth.txt.')
     parser.add_argument('-m', '--maxDifference', type=float, default=0.2, help='Maximum difference between time entries for synchronization of files.')
 
     return parser.parse_args()
@@ -61,18 +63,64 @@ def main() -> None:
     Main function. Parse, check input parameter and process data augmentation.
     '''
     try:
-        args = parseArgs()
-        args = checkInputParameter(args)
-        print(Utilities.argsToStr(args))
+        datasetBase = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets'
 
-        startTime = time.time()
-        gtHandler = TumGroundTruthHandler()
-        gtHandler.progress = displayProgress
-        gtHandler.associate(args.groundTruthFile, args.rgbDir, args.depthDir, args.maxDifference)
-        gtHandler.save(args.outputFile)
-        elapsedTime = time.time() - startTime
-        print('\n')
-        logging.info('Finished in %.4f sec' % (elapsedTime))
+        subDir = [
+            # 'rgbd_dataset_freiburg1_desk',
+            # 'rgbd_dataset_freiburg1_desk2',
+            # 'rgbd_dataset_freiburg1_plant',
+            # 'rgbd_dataset_freiburg1_room',
+            # 'rgbd_dataset_freiburg1_rpy',
+            # 'rgbd_dataset_freiburg1_xyz',
+            #'rgbd_dataset_freiburg2_desk',
+            # 'rgbd_dataset_freiburg2_xyz',
+            # 'rgbd_dataset_freiburg3_long_office_household',
+            'rgbd_dataset_freiburg1_360',
+            'rgbd_dataset_freiburg1_floor',
+            'rgbd_dataset_freiburg1_teddy',
+            'rgbd_dataset_freiburg2_360_hemisphere',
+            'rgbd_dataset_freiburg2_coke',
+            'rgbd_dataset_freiburg2_desk_with_person',
+            'rgbd_dataset_freiburg2_dishes',
+            'rgbd_dataset_freiburg2_flowerbouquet',
+            'rgbd_dataset_freiburg2_flowerbouquet_brownbackground',
+            'rgbd_dataset_freiburg2_large_no_loop',
+            'rgbd_dataset_freiburg2_metallic_sphere',
+            'rgbd_dataset_freiburg2_metallic_sphere2',
+            'rgbd_dataset_freiburg2_pioneer_360',
+            'rgbd_dataset_freiburg2_pioneer_slam',
+            'rgbd_dataset_freiburg3_cabinet',
+            'rgbd_dataset_freiburg3_large_cabinet',
+            'rgbd_dataset_freiburg3_nostructure_texture_far',
+            'rgbd_dataset_freiburg3_nostructure_texture_near_withloop',
+            'rgbd_dataset_freiburg3_sitting_static',
+            'rgbd_dataset_freiburg3_structure_notexture_far',
+            'rgbd_dataset_freiburg3_structure_notexture_near',
+            'rgbd_dataset_freiburg3_structure_texture_far',
+            'rgbd_dataset_freiburg3_structure_texture_near',
+            'rgbd_dataset_freiburg3_teddy',
+            'rgbd_dataset_freiburg3_walking_xyz',
+        ]
+
+        args = parseArgs()
+        for i in range(0, len(subDir)):
+            args.groundTruthFile = os.path.join(datasetBase, subDir[i], 'groundtruth.txt')
+            args.rgbDir = os.path.join(datasetBase, subDir[i], 'rgb')
+            args.depthDir = os.path.join(datasetBase, subDir[i], 'depth')
+            args.outputFile = os.path.join(datasetBase, subDir[i], 'groundtruth_associated.txt')
+
+            args = checkInputParameter(args)
+            print(Utilities.argsToStr(args))
+
+            startTime = time.time()
+            gtHandler = TumGroundTruthHandler()
+            gtHandler.progress = displayProgress
+            gtHandler.associate(args.groundTruthFile, args.rgbDir, args.depthDir, args.maxDifference, args.rgbFile, args.depthFile)
+            gtHandler.save(args.outputFile)
+            elapsedTime = time.time() - startTime
+            print('\n')
+            logging.info('Finished in %.4f sec' % (elapsedTime))
+
         sys.exit(0)
     except Exception as e:
         logging.error(e)

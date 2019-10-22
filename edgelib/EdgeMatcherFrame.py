@@ -17,11 +17,31 @@ class EdgeMatcherFrame(Frame):
         super().__init__()
 
         # key = uid, value = meaningful edge result
-        self.projectedEdgeResults = {}
+        self.projectedEdgeResults = {}        
+        self.multiscaleBoundaries = {}
+        self.multiscaleDistanceTransform = {}
         self.__meaningfulEdges = None
 
-        self.scaledMeaningfulEdges = None
+        self.scaledStableEdges = None
+        self.scaledStableEdgesDistanceTransform = None
+        self.scaledStableEdgePredictions = None
         self.refinedMeaningfulEdges = None
+
+    def updateMultiscaleBoundaries(self, scale: int = None, boundaries: np.ndarray = None) -> None:
+        '''
+        Update datastructures with scaled information.
+
+        scale Scale information.
+
+        boundaries Boundaries of image.
+        '''
+        assert(scale is not None, 'Invalid scale parameter.')
+        assert(boundaries is not None, 'Invalid boundaries parameter.')
+
+        distanceTransform = cv.distanceTransform(255 - boundaries, cv.DIST_L2, cv.DIST_MASK_PRECISE)
+        self.multiscaleBoundaries.update({scale: boundaries})
+        self.multiscaleDistanceTransform.update({scale: distanceTransform})
+
 
     def printProjectedEdgeResults(self) -> None:
         '''
