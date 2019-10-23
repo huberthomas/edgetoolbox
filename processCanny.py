@@ -59,9 +59,9 @@ def parseArgs() -> any:
     parser.add_argument('-i', '--inputDir', type=str, default=None, required=True, help='Input image directory.')
     parser.add_argument('-o', '--outputDir', type=str, default=None, required=True, help='Image output directory.')
     parser.add_argument('-k', '--kernelSize', type=int, default=3, help='Set the Sobel kernel size. Default 3.')
-    parser.add_argument('-bk', '--blurKernelSize', type=int, default=3, help='Set the blur kernel size. Default 3.')
-    parser.add_argument('-t1', '--threshold1', type=int, default=50, help='First threshold for the hysteresis process. Default 100.')
-    parser.add_argument('-t2', '--threshold2', type=int, default=100, help='Second threshold for the hysteresis process. Default 150')
+    parser.add_argument('-bk', '--blurKernelSize', type=int, default=5, help='Set the blur kernel size. Default 5.')
+    parser.add_argument('-t1', '--threshold1', type=int, default=50, help='First threshold for the hysteresis process. Default 50.')
+    parser.add_argument('-t2', '--threshold2', type=int, default=150, help='Second threshold for the hysteresis process. Default 150')
     parser.add_argument('-ha', '--highAccuracy', default=True, action='store_true', help='High accuracy flag. Default true.')
     parser.add_argument('-t', '--threads', type=int, default=mp.cpu_count(), help='Number of spawned threads to process data. Default is maximum number.')
 
@@ -94,8 +94,8 @@ def processAndSaveCanny(imgFilePath: str = None,
     '''
     try:
         img = cv.imread(imgFilePath)
-        #img = cv.pyrDown(img)
-        #img = cv.pyrDown(img)
+        # img = cv.pyrDown(img)
+        # img = cv.pyrDown(img)
         edge = ImageProcessing.canny(img, threshold1, threshold2, kernelSize, highAccuracy, blurKernelSize)
         cv.imwrite(outFilePath, edge)
     except Exception as e:
