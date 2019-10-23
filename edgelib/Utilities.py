@@ -5,6 +5,8 @@ import glob
 import fnmatch
 import shutil
 from typing import List
+import numpy as np
+import matplotlib.pyplot as plt
 
 '''
 Utilities and helper functions.
@@ -492,3 +494,57 @@ def copyRgbFromGtList(rgbSrcDir: str = None, gtSrcDir: str = None, rgbDstDir: st
         else:
             print('Missing file: %s'%(srcRgbFile))
 
+
+def generateMultiScaleImage(imageFileNames: List[str] = [], srcDirs: List[str] = [], outputDir: str = None) -> None:
+    '''
+    Combines multiple images to a single one by adding same images from the src directory together and take the mean
+    as result. All images will be scaled to the resolution of the image in the first directory.
+
+    imageFilesNames Image file names that are located in all src directories.
+
+    srcDirs Source image directory.
+
+    outputDir Result output directory.
+
+    e.g.
+    baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/stableEdgesTest2/all_rgb/'
+    subDir = 'canny_multiScale_cpu'
+    levelDirs = [
+        os.path.join(baseDir, subDir, 'level0'),
+        os.path.join(baseDir, subDir, 'level1'),
+        os.path.join(baseDir, subDir, 'level2')
+    ]
+    imageFileNames = getFileNames(os.path.join(baseDir, subDir, 'level0'))
+    generateMultiScaleImage(imageFileNames, levelDirs, os.path.join(baseDir, subDir))
+    '''
+    scales = len(srcDirs)
+    total = len(imageFileNames)
+    for i in range(0, total):
+        imageFileName = imageFileNames[i]
+
+        print('Processing %s %.2f%%'%(imageFileName, ((i+1)/total)*100))
+        
+        resImg = None
+        shape = (0, 0)
+        for srcDir in srcDirs:
+            imgPath = os.path.join(srcDir, imageFileName)
+
+            if not os.path.exists(imgPath):
+                raise ValueError('Invalid image %s' % (imgPath))
+
+            img = np.array(cv.imread(imgPath, cv.IMREAD_GRAYSCALE))
+
+            if resImg is None:
+                # rescale all images afterwards to this image
+                resImg = np.array(img).astype(np.float64)
+                shape = resImg.shape[:2]
+                continue
+
+            if img.shape[:2] != shape:
+                img = cv.resize(img, (shape[1], shape[0]), interpolation=cv.INTER_LINEAR)
+
+            resImg += img
+        
+        resImg /= scales
+
+        cv.imwrite(os.path.join(outputDir, imageFileName), resImg)
