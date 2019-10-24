@@ -7,6 +7,7 @@ import shutil
 from typing import List
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 '''
 Utilities and helper functions.
@@ -373,14 +374,14 @@ def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
         inputDirs = [
             baseSubDir,
             os.path.join(baseSubDir, 'bdcn'),
-            os.path.join(baseSubDir, 'bdcn_40k'),
-            os.path.join(baseSubDir, 'bdcn_30k'),
-            os.path.join(baseSubDir, 'bdcn_20k'),
-            os.path.join(baseSubDir, 'bdcn_10k'),
-            os.path.join(baseSubDir, 'bdcn_5k'),
-            os.path.join(baseSubDir, 'bdcn_1k'),
+            os.path.join(baseSubDir, 'bdcn_tum_gpu'),
+            # os.path.join(baseSubDir, 'bdcn_30k'),
+            # os.path.join(baseSubDir, 'bdcn_20k'),
+            # os.path.join(baseSubDir, 'bdcn_10k'),
+            # os.path.join(baseSubDir, 'bdcn_5k'),
+            # os.path.join(baseSubDir, 'bdcn_1k'),
+            # os.path.join(baseSubDir, 'bdcn_1k'),
         ]
-
         createHtmlTileOutput(inputDirs, os.path.join(baseDir, '%s.html'%(os.path.basename(htmlOutputFileNames[i]))))
     '''
     data = []
@@ -430,7 +431,6 @@ def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
     f = open(htmlFilePath, 'w')
     f.write(html)
     f.close()
-
 
 def copyRgbFromGtList(rgbSrcDir: str = None, gtSrcDir: str = None, rgbDstDir: str = None) -> None:
     '''
@@ -548,3 +548,63 @@ def generateMultiScaleImage(imageFileNames: List[str] = [], srcDirs: List[str] =
         resImg /= scales
 
         cv.imwrite(os.path.join(outputDir, imageFileName), resImg)
+
+
+def writeStringList(filePath, strList):
+    '''
+    Write list of strings to a file.
+
+    filePath Output file path.
+
+    strList Array that contains a string in each line.
+    '''
+    f = open(filePath, 'w')
+    for line in strList:
+        f.write('%s\n'%(line.strip()))
+    f.close()
+
+def createValidationLst(dataRootDir: str = None, dataLstFile: str = None):
+    '''
+    Creates a validation list out of a data list file. The validation files
+    are not located in the datalist anymore.
+
+    dataRootDir Data root directory.
+
+    dataLstFile File that contains RGB/ground truth correspondences in each line, e.g.
+    rgb_aug/0.0_0_1_1.0/1311867171.026274.png gt_aug/0.0_0_1_1.0/1311867171.026274.png
+    rgb_aug/22.5_0_0_1.0/1311867171.026274.png gt_aug/22.5_0_0_1.0/1311867171.026274.png
+    rgb_aug/22.5_0_1_1.0/1311867171.026274.png gt_aug/22.5_0_1_1.0/1311867171.026274.png
+
+    e.g.
+    dataRootDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/stableEdges2'
+    dataLstFile = 'train_pair_.lst'
+    createValidationLst(dataRootDir, dataLstFile)
+    '''
+    filePath = os.path.join(dataRootDir, dataLstFile)
+    trainDataLstFile = os.path.join(dataRootDir, 'auto_generated_train_' + dataLstFile)
+    valDataLstFile = os.path.join(dataRootDir, 'auto_generated_val_' + dataLstFile)
+    trainDataLst = []
+    valDataLst = []
+    with open(filePath, 'r') as f:
+        files = f.readlines()
+        #files = [line.strip().split('\n') for line in files]
+        total = len(files)
+        #print(total, files[:4])
+        # 10% of dataset is validation
+        valTotal = total * 0.1
+
+        if valTotal > 100:
+            valTotal = 100
+
+        while len(valDataLst) < valTotal:
+            k = random.randint(0, total-2)
+            # create new lists
+            trainDataLst = files[:k]
+            valDataLst.append(files[k])
+            trainDataLst.extend(files[k+1:])
+            files = trainDataLst
+            total -= 1
+
+    writeStringList(trainDataLstFile, trainDataLst)
+    writeStringList(valDataLstFile, valDataLst)
+
