@@ -8,6 +8,7 @@ from typing import List
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import re
 
 '''
 Utilities and helper functions.
@@ -611,4 +612,16 @@ def createValidationLst(dataRootDir: str = None, dataLstFile: str = None):
 
     writeStringList(trainDataLstFile, trainDataLst)
     writeStringList(valDataLstFile, valDataLst)
+
+def naturalSort(l: List[str]): 
+    '''
+    Sorting dictionary naturally.
+
+    l List with strings.
+
+    Returns sorted list
+    '''
+    convert = lambda text: int(text) if text.isdigit() else text.lower() 
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
+    return sorted(l, key = alphanum_key)
 
