@@ -162,24 +162,33 @@ def main() -> None:
             # 'rgbd_dataset_freiburg2_pioneer_360',
             # 'rgbd_dataset_freiburg2_pioneer_slam',
 
-            'rgbd_dataset_freiburg3_cabinet',
-            'rgbd_dataset_freiburg3_large_cabinet',
-            'rgbd_dataset_freiburg3_nostructure_texture_far',
-            'rgbd_dataset_freiburg3_nostructure_texture_near_withloop',
-            'rgbd_dataset_freiburg3_sitting_static',
-            'rgbd_dataset_freiburg3_structure_notexture_far',
-            'rgbd_dataset_freiburg3_structure_notexture_near',
-            'rgbd_dataset_freiburg3_structure_texture_far',
-            'rgbd_dataset_freiburg3_structure_texture_near',
-            'rgbd_dataset_freiburg3_teddy',
-            'rgbd_dataset_freiburg3_walking_xyz',
+            # 'rgbd_dataset_freiburg3_cabinet',
+            # 'rgbd_dataset_freiburg3_large_cabinet',
+            # 'rgbd_dataset_freiburg3_nostructure_texture_far',
+            # 'rgbd_dataset_freiburg3_nostructure_texture_near_withloop',
+            # 'rgbd_dataset_freiburg3_sitting_static',
+            # 'rgbd_dataset_freiburg3_structure_notexture_far',
+            # 'rgbd_dataset_freiburg3_structure_notexture_near',
+            # 'rgbd_dataset_freiburg3_structure_texture_far',
+            # 'rgbd_dataset_freiburg3_structure_texture_near',
+            # 'rgbd_dataset_freiburg3_teddy',
+            # 'rgbd_dataset_freiburg3_walking_xyz',
+
+            # 'icl_living_room_0',
+            # 'icl_living_room_1',
+            # 'icl_living_room_2',
+            # 'icl_living_room_3',
+            # 'icl_office_0',
+            # 'icl_office_1',
+            'icl_office_2',
+            #'icl_office_3'
         ]
 
         for i in range(0, len(subDir)):
             args.rgbDir = os.path.join(datasetBase, subDir[i], 'rgb')
             args.depthDir = os.path.join(datasetBase, subDir[i], 'depth')
             #args.maskDir = os.path.join(allBase, subDir[i], 'level0/canny')
-            args.camCalibFile = os.path.join(datasetBase, subDir[i], 'camera_calib_schenk.yml')
+            args.camCalibFile = os.path.join(datasetBase, subDir[i], 'camera_calib.yml')
             args.groundTruthFile = os.path.join(datasetBase, subDir[i], 'groundtruth_associated.txt')
             args.outputDir = os.path.join(allBase, subDir[i], 'level0', 'stableEdgesFo2')
             args.frameOffset = 2
