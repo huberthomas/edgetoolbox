@@ -346,7 +346,6 @@ def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
     dirList Stringlist of image directories.
 
     htmlFilePath HTML output file that contains tile view of found images.
-
     baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/test_dataset'
     subDirs = [
         os.path.join(baseDir, 'hdr_fusion', 'flicker_synthetic', 'flicker_1'),
@@ -375,6 +374,8 @@ def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
             baseSubDir,
             os.path.join(baseSubDir, 'bdcn'),
             os.path.join(baseSubDir, 'bdcn_tum_gpu'),
+            os.path.join(baseSubDir, 'bdcn_tum_7k_aug_gpu'),
+            os.path.join(baseSubDir, 'bdcn_singleScale_gpu_tum_21k_augplus')
             # os.path.join(baseSubDir, 'bdcn_30k'),
             # os.path.join(baseSubDir, 'bdcn_20k'),
             # os.path.join(baseSubDir, 'bdcn_10k'),
@@ -431,6 +432,8 @@ def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
     f = open(htmlFilePath, 'w')
     f.write(html)
     f.close()
+
+
 
 def copyRgbFromGtList(rgbSrcDir: str = None, gtSrcDir: str = None, rgbDstDir: str = None) -> None:
     '''
@@ -594,6 +597,7 @@ def createValidationLst(dataRootDir: str = None, dataLstFile: str = None):
         valTotal = total * 0.1
 
         if valTotal > 100:
+            # limit val to max 100 images
             valTotal = 100
 
         while len(valDataLst) < valTotal:
