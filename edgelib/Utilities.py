@@ -615,7 +615,10 @@ def createValidationLst(dataRootDir: str = None, dataLstFile: str = None):
 
 def naturalSort(l: List[str]): 
     '''
-    Sorting dictionary naturally.
+    Sorting dictionary naturally, 
+    e.g. [1.png 2.png, 10.png, 100.png]
+    sort -> 1.png 10.png 100.png 2.png
+    naturalSort -> 1.png 2.png 10.png 100.png
 
     l List with strings.
 
