@@ -35,3 +35,5 @@ To install all necessary dependencies please use conda or pip. Conda is recommen
 [Pascal Voc 2012](https://pjreddie.com/projects/pascal-voc-dataset-mirror/)
 
 [SUN RGB-D](http://rgbd.cs.princeton.edu/)
+
+[ICL NUIM](https://www.doc.ic.ac.uk/~ahanda/VaFRIC/iclnuim.html)
