@@ -138,10 +138,17 @@ class TumGroundTruthHandler:
             counter = 0
             total = len(self.__associations)
             for a in self.__associations.values():
+                # recommended for ICL dataset
+                # f.write('%f %.9f %.9f %.9f %.9f %.9f %.9f %.9f %s %s\n' % (a.gt.timestamp,
+                #                                              a.gt.t[0], a.gt.t[1], a.gt.t[2],
+                #                                              a.gt.q[1], a.gt.q[2], a.gt.q[3], a.gt.q[0],
+                #                                              a.rgb, a.depth))                                                             
+                # recommended for TUM dataset
                 f.write('%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %s %s\n' % (a.gt.timestamp,
                                                              a.gt.t[0], a.gt.t[1], a.gt.t[2],
                                                              a.gt.q[1], a.gt.q[2], a.gt.q[3], a.gt.q[0],
                                                              a.rgb, a.depth))
+                # recommended for ETH dataset
                 # f.write('%.9f %.13f %.13f %.13f %.13f %.13f %.13f %.13f %s %s\n' % (a.gt.timestamp,
                 #                                              a.gt.t[0], a.gt.t[1], a.gt.t[2],
                 #                                              a.gt.q[1], a.gt.q[2], a.gt.q[3], a.gt.q[0],
@@ -197,7 +204,7 @@ class TumGroundTruthHandler:
             raise e
 
         # sort associations to be sure that the timestamps are increasing
-        self.__associations = collections.OrderedDict(sorted(associations.items()))
+        self.__associations = collections.OrderedDict((associations.items()))
 
     def __readRawGroundTruthFile(self, tumGtPath: str = None) -> List[TumGroundTruth]:
         '''
@@ -316,8 +323,11 @@ class TumGroundTruthHandler:
         rgbFiles = Utilities.getFileNames(rgbDirPath)
         depthFiles = Utilities.getFileNames(depthDirPath)
 
-        rgbFiles.sort()
-        depthFiles.sort()
+        # rgbFiles.sort()
+        # depthFiles.sort()
+
+        rgbFiles = Utilities.naturalSort(rgbFiles)
+        depthFiles = Utilities.naturalSort(depthFiles)
 
         associations = []
         ascIndex = 0
@@ -404,5 +414,5 @@ class TumGroundTruthHandler:
 
             associations.update({('%f' % association.gt.timestamp): association})
             ascIndex = foundCandidateIndex
-
-        return collections.OrderedDict(sorted(associations.items()))
+        
+        return collections.OrderedDict((associations.items()))
