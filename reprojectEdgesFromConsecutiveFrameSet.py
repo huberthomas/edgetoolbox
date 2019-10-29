@@ -119,7 +119,7 @@ def parseArgs() -> any:
                         help='Fill out undefined depth regions by inpainting. 0 ... off, 1 ... CV_INPAINT_NS, 2 ... CV_INPAINT_TELEA. Default is 0.')
     parser.add_argument('-s', '--scales', type=int, choices=[0, 1, 2], default=0, help='Set the scale level. 0 = 1:1, 1 = 1:2, 2 = 1:4')
     parser.add_argument('-mipa', '--minIsolatedPixelArea', type=int, default=0, help='Minimum isolated pixel areas. Cleans contours less or equal this value.')
-
+    parser.add_argument('-wb', '--whiteBalance', default=False, action='store_true', help='Add white balance to the input RGB image. Default false.')
     return parser.parse_args()
 
 
@@ -180,8 +180,28 @@ def main() -> None:
             # 'icl_living_room_3',
             # 'icl_office_0',
             # 'icl_office_1',
-            'icl_office_2',
-            #'icl_office_3'
+            #'icl_office_2',
+            #'icl_office_3',
+            # 'eth3d_cables_1',
+            # 'eth3d_cables_2',
+            # 'eth3d_einstein_1',
+            # 'eth3d_einstein_2',
+            # 'eth3d_einstein_global_light_changes_2',
+            # 'eth3d_mannequin_3',
+            # 'eth3d_mannequin_4',
+            # 'eth3d_mannequin_face_1',
+            # 'eth3d_mannequin_face_2',
+            # 'eth3d_planar_1',
+            # 'eth3d_planar_2',
+            #  'eth3d_plant_scene_1',
+            # 'eth3d_plant_scene_2',
+            # 'eth3d_rgbd_dataset_freiburg1_desk2_clean',
+            # 'eth3d_sfm_bench',
+            # 'eth3d_sofa_1',
+            # 'eth3d_sofa_2',
+            # 'eth3d_table_3',
+            # 'eth3d_table_4',
+            # 'eth3d_table_7',
         ]
 
         for i in range(0, len(subDir)):
@@ -232,9 +252,11 @@ def main() -> None:
 
             data = list(gtHandler.data())
             total = len(data)
-            
-            # if total > 1000:
-            #     total = 1000
+
+            # maxTotal = 200
+
+            # if total > maxTotal:
+            #     total = maxTotal
 
             startIndex = 0
             # if total < startIndex:
@@ -265,6 +287,15 @@ def main() -> None:
 
                 frame = EdgeMatcherFrame()
                 frame.uid = a.rgb  # a.gt.timestamp
+
+                if args.whiteBalance:
+                    rgb = ImageProcessing.whiteBalance(rgb)
+                    rgb = cv.cvtColor(rgb, cv.COLOR_BGR2GRAY)
+                    # https://docs.opencv.org/master/d5/daf/tutorial_py_histogram_equalization.html
+                    clahe = cv.createCLAHE(clipLimit=6.0, tileGridSize=(8,8))
+                    rgb = clahe.apply(rgb)
+                    rgb = cv.cvtColor(rgb, cv.COLOR_GRAY2BGR)
+
                 frame.setRgb(rgb)
                 frame.setDepth(depth)
                 frame.setT(a.gt.q, a.gt.t)
@@ -303,7 +334,8 @@ def main() -> None:
                 # fig.add_subplot(3, 1, 3)
                 # plt.axis('off')
                 # plt.title('Good/Bad Edges')
-                # plt.imshow(rgbCpy, cmap='hot')
+                # # plt.imshow(cv.cvtColor(rgbCpy, cv.COLOR_BGR2RGB))
+                # plt.imshow(rgbCpy)
                 # plt.show()
                 # exit(0)
 
