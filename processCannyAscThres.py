@@ -108,6 +108,8 @@ def processAndSaveCanny(imgFilePath: str = None,
     '''
     try:
         img = cv.imread(imgFilePath)
+        #img = cv.pyrDown(img)
+        #img = cv.pyrDown(img)
         edge = ImageProcessing.cannyAscendingThreshold(img, threshold1, threshold2, kernelSize, highAccuracy, blurKernelSize, stepRange, validEdgesThreshold)
         cv.imwrite(outFilePath, edge)
     except Exception as e:
