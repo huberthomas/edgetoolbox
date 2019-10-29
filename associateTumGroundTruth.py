@@ -100,7 +100,7 @@ def main() -> None:
             # 'rgbd_dataset_freiburg3_structure_texture_near',
             # 'rgbd_dataset_freiburg3_teddy',
             # 'rgbd_dataset_freiburg3_walking_xyz',
-            'icl_living_room_0',
+            #'icl_living_room_0',
             # 'icl_living_room_1',
             # 'icl_living_room_2',
             # 'icl_living_room_3',
@@ -108,6 +108,26 @@ def main() -> None:
             # 'icl_office_1',
             # 'icl_office_2',
             # 'icl_office_3'
+            # 'eth3d_cables_1',
+            # 'eth3d_cables_2',
+            # 'eth3d_einstein_1',
+            # 'eth3d_einstein_2',
+            # 'eth3d_einstein_global_light_changes_2',
+            # 'eth3d_mannequin_3',
+            # 'eth3d_mannequin_4',
+            # 'eth3d_mannequin_face_1',
+            # 'eth3d_mannequin_face_2',
+            # 'eth3d_planar_1',
+            # 'eth3d_planar_2',
+            # 'eth3d_plant_scene_1',
+            # 'eth3d_plant_scene_2',
+            # 'eth3d_rgbd_dataset_freiburg1_desk2_clean',
+            # 'eth3d_sfm_bench',
+            # 'eth3d_sofa_1',
+            # 'eth3d_sofa_2',
+            # 'eth3d_table_3',
+            # 'eth3d_table_4',
+            # 'eth3d_table_7',
         ]
 
         args = parseArgs()
@@ -116,6 +136,9 @@ def main() -> None:
             args.rgbDir = os.path.join(datasetBase, subDir[i], 'rgb')
             args.depthDir = os.path.join(datasetBase, subDir[i], 'depth')
             args.outputFile = os.path.join(datasetBase, subDir[i], 'groundtruth_associated.txt')
+
+            #args.rgbFile = os.path.join(datasetBase, subDir[i], 'rgb.txt')
+            #args.depthFile = os.path.join(datasetBase, subDir[i], 'depth.txt')
 
             args = checkInputParameter(args)
             print(Utilities.argsToStr(args))
