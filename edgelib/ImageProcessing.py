@@ -493,11 +493,18 @@ def cannyAscendingThreshold(img: np.ndarray = None,
         resImg = cv.add(resImg, edgeImg)
         i = i + 1
 
+
+
+
     validEdgesThreshold = i * validEdgesThreshold
+    resImg[np.where(resImg < validEdgesThreshold)] = 0
 
-    cv.threshold(resImg, validEdgesThreshold, 255, cv.THRESH_BINARY, edgeImg)
+    if i != 0:
+        resImg /= i
 
-    return edgeImg.astype(np.uint8)
+    #cv.threshold(resImg, validEdgesThreshold, 255, cv.THRESH_BINARY, edgeImg)
+
+    return (resImg*255).astype(np.uint8)
 
 
 def createHeatmap(img: np.ndarray = None, colormap: int = cv.COLORMAP_JET) -> np.ndarray:
@@ -904,3 +911,21 @@ def projectEdges(frameFrom: EdgeMatcherFrame = None,
     # plt.show()
 
     return reprojectedEdges
+
+
+def whiteBalance(img: np.ndarray) -> np.ndarray:
+    '''
+    White balancing an input image. See
+    https://pippin.gimp.org/image-processing/chapter-automaticadjustments.html
+
+    img Input image that should be white balanced.
+
+    Returns white balanced image.
+    '''
+    result = cv.cvtColor(img, cv.COLOR_BGR2LAB)
+    avg_a = np.average(result[:, :, 1])
+    avg_b = np.average(result[:, :, 2])
+    result[:, :, 1] = result[:, :, 1] - ((avg_a - 128) * (result[:, :, 0] / 255.0) * 1.1)
+    result[:, :, 2] = result[:, :, 2] - ((avg_b - 128) * (result[:, :, 0] / 255.0) * 1.1)
+    result = cv.cvtColor(result, cv.COLOR_LAB2BGR)
+    return result
