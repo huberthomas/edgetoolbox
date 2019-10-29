@@ -144,15 +144,15 @@ class TumGroundTruthHandler:
                 #                                              a.gt.q[1], a.gt.q[2], a.gt.q[3], a.gt.q[0],
                 #                                              a.rgb, a.depth))                                                             
                 # recommended for TUM dataset
-                f.write('%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %s %s\n' % (a.gt.timestamp,
-                                                             a.gt.t[0], a.gt.t[1], a.gt.t[2],
-                                                             a.gt.q[1], a.gt.q[2], a.gt.q[3], a.gt.q[0],
-                                                             a.rgb, a.depth))
-                # recommended for ETH dataset
-                # f.write('%.9f %.13f %.13f %.13f %.13f %.13f %.13f %.13f %s %s\n' % (a.gt.timestamp,
+                # f.write('%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %s %s\n' % (a.gt.timestamp,
                 #                                              a.gt.t[0], a.gt.t[1], a.gt.t[2],
                 #                                              a.gt.q[1], a.gt.q[2], a.gt.q[3], a.gt.q[0],
                 #                                              a.rgb, a.depth))
+                # recommended for ETH dataset
+                f.write('%.9f %.14f %.14f %.14f %.14f %.14f %.14f %.14f %s %s\n' % (a.gt.timestamp,
+                                                             a.gt.t[0], a.gt.t[1], a.gt.t[2],
+                                                             a.gt.q[1], a.gt.q[2], a.gt.q[3], a.gt.q[0],
+                                                             a.rgb, a.depth))
                 counter = counter + 1
                 self.progress(counter / total * 100)
 
