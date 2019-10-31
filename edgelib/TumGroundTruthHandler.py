@@ -206,6 +206,19 @@ class TumGroundTruthHandler:
         # sort associations to be sure that the timestamps are increasing
         self.__associations = collections.OrderedDict((associations.items()))
 
+    def getAssocatedDepthFile(self, rgbFileName: str = None) -> str:
+        '''
+        Get the associdated depth image file name.
+
+        rgbFileName RGB image name.
+
+        Returns the associated depth image file name, otherwise None.
+        '''
+        for entry in self.data():
+            if entry.rgb == rgbFileName:
+                return entry.depth
+        return None
+
     def __readRawGroundTruthFile(self, tumGtPath: str = None) -> List[TumGroundTruth]:
         '''
         Reads the ground truth information out of a defined file.
