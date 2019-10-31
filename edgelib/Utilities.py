@@ -1,15 +1,21 @@
-import os
-import cv2 as cv
-import math
-import glob
 import fnmatch
-import shutil
-from typing import List
-import numpy as np
-import matplotlib.pyplot as plt
+import glob
+import math
+import os
 import random
 import re
+import shutil
+import sys
+from typing import List
 
+import cv2 as cv
+import matplotlib.pyplot as plt
+import numpy as np
+
+from . import TumGroundTruthHandler
+
+#sys.path.append(".")
+#from .TumGroundTruthHandler import TumGroundTruthHandler
 '''
 Utilities and helper functions.
 '''
@@ -29,6 +35,8 @@ def createTrainList(baseDir: str = None, gtDirs: List[str] = None, rgbDirs: List
     supportedExtensions These files are included in the training list.
 
     e.g.
+    createTrainList('/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/bsr_bsds500/BSR/BSDS500/data', ['groundTruth/val'], ['images/val'], 'val_lst.lst', ['png'])
+    or
     baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/stableEdgesTest2'
     gtDirs = [
         'gt/rgbd_dataset_freiburg1_360',
@@ -133,7 +141,7 @@ def createTrainList(baseDir: str = None, gtDirs: List[str] = None, rgbDirs: List
         lenFileNames = len(fileNames)
 
         for j in range(0, lenFileNames):
-            fileName = fileNames[j]
+            fileName = fileNames[j]            
             f.write('%s %s' % (os.path.join(rgbDir, fileName), os.path.join(gtDir, fileName)))
 
             if j != lenFileNames - 1 or i != lenGtDirs - 1:
@@ -374,9 +382,10 @@ def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
         inputDirs = [
             baseSubDir,
             os.path.join(baseSubDir, 'bdcn'),
+            os.path.join(baseSubDir, 'bdcn_30k'),
             os.path.join(baseSubDir, 'bdcn_tum_gpu'),
             os.path.join(baseSubDir, 'bdcn_tum_7k_aug_gpu'),
-            os.path.join(baseSubDir, 'bdcn_singleScale_gpu_tum_21k_augplus')
+            # os.path.join(baseSubDir, 'bdcn_singleScale_gpu_tum_21k_augplus'),
             # os.path.join(baseSubDir, 'bdcn_30k'),
             # os.path.join(baseSubDir, 'bdcn_20k'),
             # os.path.join(baseSubDir, 'bdcn_10k'),
@@ -434,9 +443,7 @@ def createHtmlTileOutput(dirList: List[str] = [], htmlFilePath: str = None):
     f.write(html)
     f.close()
 
-
-
-def copyRgbFromGtList(rgbSrcDir: str = None, gtSrcDir: str = None, rgbDstDir: str = None) -> None:
+def copyRgbFromGtList(rgbSrcDir: str = None, gtSrcDir: str = None, rgbDstDir: str = None, gtAssociatedFile: str = None) -> None:
     '''
     Copy corresponding RGB file from the GT directory to a new RGB destination dir. Looks in GT directory
     for image filenames and copies RGB equivalent to the destination folder.
@@ -484,14 +491,50 @@ def copyRgbFromGtList(rgbSrcDir: str = None, gtSrcDir: str = None, rgbDstDir: st
         'rgbd_dataset_freiburg3_structure_texture_far',
         'rgbd_dataset_freiburg3_structure_texture_near',
         'rgbd_dataset_freiburg3_teddy',
-        'rgbd_dataset_freiburg3_walking_xyz'
+        'rgbd_dataset_freiburg3_walking_xyz',
+        'eth3d_cables_1',
+        'eth3d_cables_2',
+        'eth3d_einstein_1',
+        'eth3d_einstein_2',
+        'eth3d_einstein_global_light_changes_2',
+        'eth3d_mannequin_3',
+        'eth3d_mannequin_4',
+        'eth3d_mannequin_face_1',
+        'eth3d_mannequin_face_2',
+        'eth3d_planar_1',
+        'eth3d_planar_2',
+        'eth3d_plant_scene_1',
+        'eth3d_plant_scene_2',
+        'eth3d_sfm_bench',
+        'eth3d_sofa_1',
+        'eth3d_sofa_2',
+        'eth3d_table_3',
+        'eth3d_table_4',
+        'eth3d_table_7',
+        'icl_living_room_0',
+        'icl_living_room_1',
+        'icl_living_room_2',
+        'icl_living_room_3',
+        'icl_office_0',
+        'icl_office_1',
+        'icl_office_2',
+        'icl_office_3',
     ]
     for i in range(0, len(subDir)):
         copyRgbFromGtList(os.path.join(baseDir, subDir[i], 'rgb'), os.path.join(trainDir, 'gt', subDir[i]), os.path.join(trainDir, 'rgb', subDir[i]))
     '''
+    gtHandler = None
+    if gtAssociatedFile:
+        print('Using associated files.')
+        gtHandler = TumGroundTruthHandler()
+        gtHandler.load(gtAssociatedFile)
+
     gtFileNames = getFileNames(gtSrcDir)
 
     for filename in gtFileNames:
+        if gtHandler is not None:
+            filename = gtHandler.getAssocatedDepthFile(filename)
+
         srcRgbFile = os.path.join(rgbSrcDir, filename)
         if os.path.exists(srcRgbFile):
             shutil.copyfile(srcRgbFile, os.path.join(rgbDstDir, filename))
@@ -553,6 +596,15 @@ def generateMultiScaleImage(imageFileNames: List[str] = [], srcDirs: List[str] =
 
         cv.imwrite(os.path.join(outputDir, imageFileName), resImg)
 
+    # baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/stableEdgesIndependentTest2/all_rgb/'
+    # subDir = 'sn_multiScale_cpu'
+    # levelDirs = [
+    #     os.path.join(baseDir, subDir, 'level0'),
+    #     os.path.join(baseDir, subDir, 'level1'),
+    #     os.path.join(baseDir, subDir, 'level2')
+    # ]
+    # imageFileNames = getFileNames(os.path.join(baseDir, subDir, 'level0'))
+    # generateMultiScaleImage(imageFileNames, levelDirs, os.path.join(baseDir, subDir))
 
 def writeStringList(filePath, strList):
     '''
