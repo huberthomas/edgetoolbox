@@ -112,6 +112,7 @@ def plot_traj(ax,stamps,traj,style,color,label):
 
 if __name__=="__main__":
     # parse command line
+    # evaluate_ate.py rgbd_dataset_freiburg1_xyz-groundtruth.txt bdcn_thin_poses_rgbd_dataset_freiburg1_xyz.txt --max_pairs 10000 --plot figure.png --offset 0 --scale 1 --verbose
     parser = argparse.ArgumentParser(description='''
     This script computes the absolute trajectory error from the ground truth trajectory and the estimated trajectory. 
     ''')

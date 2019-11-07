@@ -305,6 +305,9 @@ def percentile(seq,q):
     return seq_sorted[int((len(seq_sorted)-1)*q)]
 
 if __name__ == '__main__':
+    '''
+    evaluate_rpe.py rgbd_dataset_freiburg1_xyz-groundtruth.txt bdcn_adam_singleScale_gpu_tum_25k_augplus_poses_rgbd_dataset_freiburg1_xyz.txt --max_pairs 10000 --fixed_delta  --delta 1 --delta_unit s --plot figure.png --offset 0 --scale 1 --verbose
+    '''
     random.seed(0)
 
     parser = argparse.ArgumentParser(description='''
