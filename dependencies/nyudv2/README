@@ -9,3 +9,4 @@ absolute location of the libFreenect include directory. Once compile,
 get_accel_data.mex* can be called to extract the accelerometer data from the 
 *.a files in each scene dump directory.
 
+Source: https://cs.nyu.edu/%7Esilberman/code.html
