@@ -1,4 +1,4 @@
-#include <libfreenect/libfreenect.h>
+#include <libfreenect.h>
 #include "mex.h"
 #include <stdio.h>
 #include <stdlib.h>

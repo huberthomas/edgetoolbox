@@ -125,6 +125,7 @@ if __name__=="__main__":
     parser.add_argument('--save_associations', help='save associated first and aligned second trajectory to disk (format: stamp1 x1 y1 z1 stamp2 x2 y2 z2)')
     parser.add_argument('--plot', help='plot the first and the aligned second trajectory to an image (format: png)')
     parser.add_argument('--verbose', help='print all evaluation data (otherwise, only the RMSE absolute translational error in meters after alignment will be printed)', action='store_true')
+    parser.add_argument('--outputFile', help='Output file.')
     args = parser.parse_args()
 
     first_list = associate.read_file_list(args.first_file)
@@ -141,26 +142,37 @@ if __name__=="__main__":
     
     second_xyz_aligned = rot * second_xyz + trans
     
-    first_stamps = first_list.keys()
+    first_stamps = list(first_list)
     first_stamps.sort()
     first_xyz_full = numpy.matrix([[float(value) for value in first_list[b][0:3]] for b in first_stamps]).transpose()
     
-    second_stamps = second_list.keys()
+    second_stamps = list(second_list)
     second_stamps.sort()
     second_xyz_full = numpy.matrix([[float(value)*float(args.scale) for value in second_list[b][0:3]] for b in second_stamps]).transpose()
     second_xyz_full_aligned = rot * second_xyz_full + trans
     
     if args.verbose:
-        print "compared_pose_pairs %d pairs"%(len(trans_error))
+        if args.outputFile:
+            resFile = open(args.outputFile,"w")
+            resFile.write("compared_pose_pairs %d pairs\n"%(len(trans_error)))
+            resFile.write("absolute_translational_error.rmse %f m\n"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)))
+            resFile.write("absolute_translational_error.mean %f m\n"%numpy.mean(trans_error))
+            resFile.write("absolute_translational_error.median %f m\n"%numpy.median(trans_error))
+            resFile.write("absolute_translational_error.std %f m\n"%numpy.std(trans_error))
+            resFile.write("absolute_translational_error.min %f m\n"%numpy.min(trans_error))
+            resFile.write("absolute_translational_error.max %f m\n"%numpy.max(trans_error))
 
-        print "absolute_translational_error.rmse %f m"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error))
-        print "absolute_translational_error.mean %f m"%numpy.mean(trans_error)
-        print "absolute_translational_error.median %f m"%numpy.median(trans_error)
-        print "absolute_translational_error.std %f m"%numpy.std(trans_error)
-        print "absolute_translational_error.min %f m"%numpy.min(trans_error)
-        print "absolute_translational_error.max %f m"%numpy.max(trans_error)
+        print('dataset;pairs;ate_rmse_[m];ate_mean_[m];ate_median_[m];ate_std_[0];ate_min_[m];ate_max_[m]')
+        print('%s;%d;%f;%f;%f;%f;%f;%f'%(args.outputFile, len(trans_error), numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)), numpy.mean(trans_error), numpy.median(trans_error), numpy.std(trans_error), numpy.min(trans_error), numpy.max(trans_error)))
+        # print("compared_pose_pairs %d pairs"%(len(trans_error)))
+        # print("absolute_translational_error.rmse %f m"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)))
+        # print("absolute_translational_error.mean %f m"%numpy.mean(trans_error))
+        # print("absolute_translational_error.median %f m"%numpy.median(trans_error))
+        # print("absolute_translational_error.std %f m"%numpy.std(trans_error))
+        # print("absolute_translational_error.min %f m"%numpy.min(trans_error))
+        # print("absolute_translational_error.max %f m"%numpy.max(trans_error))
     else:
-        print "%f"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error))
+        print("%f"%numpy.sqrt(numpy.dot(trans_error,trans_error) / len(trans_error)))
         
     if args.save_associations:
         file = open(args.save_associations,"w")

@@ -60,7 +60,7 @@ def parseArgs() -> any:
     parser.add_argument('-o', '--outputDir', type=str, default=None, required=True, help='Image output directory.')
     parser.add_argument('-k', '--kernelSize', type=int, default=3, help='Set the Sobel kernel size. Default 3.')
     parser.add_argument('-bk', '--blurKernelSize', type=int, default=5, help='Set the blur kernel size. Default 5.')
-    parser.add_argument('-t1', '--threshold1', type=int, default=50, help='First threshold for the hysteresis process. Default 50.')
+    parser.add_argument('-t1', '--threshold1', type=int, default=100, help='First threshold for the hysteresis process. Default 50.')
     parser.add_argument('-t2', '--threshold2', type=int, default=150, help='Second threshold for the hysteresis process. Default 150')
     parser.add_argument('-ha', '--highAccuracy', default=True, action='store_true', help='High accuracy flag. Default true.')
     parser.add_argument('-t', '--threads', type=int, default=mp.cpu_count(), help='Number of spawned threads to process data. Default is maximum number.')
@@ -108,64 +108,91 @@ def main() -> None:
     '''
     try:
         args = parseArgs()
-        args = checkInputParameter(args)
-        print(Utilities.argsToStr(args))
+        #args = checkInputParameter(args)
+        #print(Utilities.argsToStr(args))
 
-        #baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/'
-        #outputBaseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/all'
-        #inputDirs = [
-        #   'rgbd_dataset_freiburg1_desk',
-        #   'rgbd_dataset_freiburg1_desk2',
-        #   'rgbd_dataset_freiburg1_plant',
-        #   'rgbd_dataset_freiburg1_room',
-        #   'rgbd_dataset_freiburg1_rpy',
-        #   'rgbd_dataset_freiburg1_xyz',
-        #   'rgbd_dataset_freiburg2_desk',
-        #   'rgbd_dataset_freiburg2_xyz',
-        #   'rgbd_dataset_freiburg3_long_office_household',
-        #] 
+        baseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/'
+        outputBaseDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/all_thinned'
+        inputDirs = [
+            'rgbd_dataset_freiburg1_360',
+            'rgbd_dataset_freiburg1_desk',
+            'rgbd_dataset_freiburg1_desk2',
+            'rgbd_dataset_freiburg1_floor',
+            'rgbd_dataset_freiburg1_plant',
+            'rgbd_dataset_freiburg1_room',
+            'rgbd_dataset_freiburg1_rpy',
+            'rgbd_dataset_freiburg1_teddy',
+            'rgbd_dataset_freiburg1_xyz',
+            'rgbd_dataset_freiburg2_360_hemisphere',
+            'rgbd_dataset_freiburg2_coke',
+            'rgbd_dataset_freiburg2_desk',
+            'rgbd_dataset_freiburg2_desk_with_person',
+            'rgbd_dataset_freiburg2_dishes',
+            'rgbd_dataset_freiburg2_flowerbouquet',
+            'rgbd_dataset_freiburg2_flowerbouquet_brownbackground',
+            'rgbd_dataset_freiburg2_large_no_loop',
+            'rgbd_dataset_freiburg2_metallic_sphere',
+            'rgbd_dataset_freiburg2_metallic_sphere2',
+            'rgbd_dataset_freiburg2_pioneer_360',
+            'rgbd_dataset_freiburg2_pioneer_slam',
+            'rgbd_dataset_freiburg2_xyz',
+            'rgbd_dataset_freiburg3_cabinet',
+            'rgbd_dataset_freiburg3_large_cabinet',
+            'rgbd_dataset_freiburg3_long_office_household',
+            'rgbd_dataset_freiburg3_nostructure_texture_far',
+            'rgbd_dataset_freiburg3_nostructure_texture_near_withloop',
+            'rgbd_dataset_freiburg3_sitting_static',
+            'rgbd_dataset_freiburg3_structure_notexture_far',
+            'rgbd_dataset_freiburg3_structure_notexture_near',
+            'rgbd_dataset_freiburg3_structure_texture_far',
+            'rgbd_dataset_freiburg3_structure_texture_near',
+            'rgbd_dataset_freiburg3_teddy',
+            'rgbd_dataset_freiburg3_walking_xyz',
+        ]
 
-        # for i in range(0, len(inputDirs)):
-        #     args.inputDir = os.path.join(baseDir, inputDirs[i], 'rgb')
-        #     args.outputDir = os.path.join(outputBaseDir, inputDirs[i], 'level2', 'canny')
+        for i in range(0, len(inputDirs)):
+            args.inputDir = os.path.join(baseDir, inputDirs[i], 'rgb')
+            args.outputDir = os.path.join(outputBaseDir, inputDirs[i], 'level0', 'canny')
+            args = checkInputParameter(args)
+            print(Utilities.argsToStr(args))
 
-        imgFileNames = Utilities.getFileNames(args.inputDir, ['png', 'jpg', 'jpeg'])
+            imgFileNames = Utilities.getFileNames(args.inputDir, ['png', 'jpg', 'jpeg'])
 
-        param = []
+            param = []
 
-        logging.info('Processing %d image(s).' % (len(imgFileNames)))
+            logging.info('Processing %d image(s).' % (len(imgFileNames)))
 
-        for imgFileName in imgFileNames:
-            imgFilePath = os.path.join(args.inputDir, imgFileName)
-            fileName = imgFileName.split('.')
-            fileName = fileName[:len(fileName)-1]
-            fileName = '.'.join(fileName) + '.png'
-            outFilePath = os.path.join(args.outputDir, fileName)
+            for imgFileName in imgFileNames:
+                imgFilePath = os.path.join(args.inputDir, imgFileName)
+                fileName = imgFileName.split('.')
+                fileName = fileName[:len(fileName)-1]
+                fileName = '.'.join(fileName) + '.png'
+                outFilePath = os.path.join(args.outputDir, fileName)
 
-            param.append((imgFilePath,
-                        outFilePath,
-                        args.threshold1,
-                        args.threshold2,
-                        args.kernelSize,
-                        args.highAccuracy,
-                        args.blurKernelSize))
+                param.append((imgFilePath,
+                              outFilePath,
+                              args.threshold1,
+                              args.threshold2,
+                              args.kernelSize,
+                              args.highAccuracy,
+                              args.blurKernelSize))
 
-        pool = mp.Pool(processes=args.threads)
+            pool = mp.Pool(processes=args.threads)
 
-        startTime = time.time()
-        pool.starmap(processAndSaveCanny, param)
-        elapsedTime = time.time() - startTime
+            startTime = time.time()
+            pool.starmap(processAndSaveCanny, param)
+            elapsedTime = time.time() - startTime
 
-        pool.terminate()
+            pool.terminate()
 
-        # write configuration to output directory
-        f = open(os.path.join(args.outputDir, 'settings.txt'), 'w')
-        f.write(Utilities.argsToStr(args))
-        f.write('\nImages\t%d' % (len(imgFileNames)))
-        f.write('\nProcessing time\t%.4f sec' % (elapsedTime))
-        f.close()
+            # write configuration to output directory
+            f = open(os.path.join(args.outputDir, 'settings.txt'), 'w')
+            f.write(Utilities.argsToStr(args))
+            f.write('\nImages\t%d' % (len(imgFileNames)))
+            f.write('\nProcessing time\t%.4f sec' % (elapsedTime))
+            f.close()
 
-        logging.info('Finished in %.4f sec' % (elapsedTime))
+            logging.info('Finished in %.4f sec' % (elapsedTime))
         sys.exit(0)
     except Exception as e:
         logging.error(e)

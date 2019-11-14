@@ -315,8 +315,8 @@ def canny(img: np.ndarray = None,
     if kernelSize % 2 == 0 or kernelSize < 3:
         raise ValueError('Wrong kernel size. Allowed are 3, 5, 7, ...')
 
-    if blurKernelSize % 2 == 0 or blurKernelSize < 3:
-        raise ValueError('Wrong blur kernel size. Allowed are 3, 5, 7, ...')
+    if blurKernelSize > 0 and blurKernelSize % 2 == 0 or blurKernelSize < 3:
+       raise ValueError('Wrong blur kernel size. Allowed are 3, 5, 7, ...')
 
     c = img.ndim
     edgePreservedBlurred = cv.edgePreservingFilter(img, None, flags=2, sigma_r=0.6)
@@ -328,7 +328,10 @@ def canny(img: np.ndarray = None,
         img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
         edgePreservedBlurred = cv.cvtColor(edgePreservedBlurred, cv.COLOR_BGRA2GRAY)
 
-    #blurredImg = cv.blur(img, (blurKernelSize, blurKernelSize))
+    #if blurKernelSize is not None:
+    #    blurredImg = cv.blur(img, (blurKernelSize, blurKernelSize))
+    #else:
+    #    blurredImg = img.copy()
     # edge preserving
     #blurredImg = cv.bilateralFilter(img, 9, 150, 150)
 
@@ -343,12 +346,17 @@ def canny(img: np.ndarray = None,
     #return medianCanny(blurredImg)
     return otsuCanny(edgePreservedBlurred)
 
-def edgePreservedOtsuCanny(img: np.ndarray) -> np.ndarray:
+def edgePreservedOtsuCanny(img: np.ndarray,
+                           sobelKernelSize: int = 3) -> np.ndarray:
     '''
     Processes edge preserved filter in combination with Otsu's threshold detection method
     for the Canny algorithm.
 
     img Input image. Multichannel will be converted to single channel.
+
+    sobelKernelSize Canny parameter.
+
+    Returns found boundaries.
     '''
     c = img.ndim
     edgePreservedBlurred = cv.edgePreservingFilter(img, None, flags=2, sigma_r=0.6)
@@ -360,15 +368,25 @@ def edgePreservedOtsuCanny(img: np.ndarray) -> np.ndarray:
         img = cv.cvtColor(img, cv.COLOR_BGRA2GRAY)
         edgePreservedBlurred = cv.cvtColor(edgePreservedBlurred, cv.COLOR_BGRA2GRAY)
 
-    return otsuCanny(edgePreservedBlurred)
+    # fig = plt.figure(12)
+    # plt.subplot(211)
+    # plt.imshow(img)
+    # plt.subplot(212)
+    # plt.imshow(edgePreservedBlurred)
+    # plt.show()
 
-def otsuCanny(img: np.ndarray) -> np.ndarray:
+    return otsuCanny(edgePreservedBlurred, sobelKernelSize)
+
+def otsuCanny(img: np.ndarray = None,
+              sobelKernelSize: int = 3) -> np.ndarray:
     '''
     Automatic Canny threshold detection via Otsu's method.
     See https://en.wikipedia.org/wiki/Otsu%27s_method for more information.
     https://www.meccanismocomplesso.org/en/opencv-python-the-otsus-binarization-for-thresholding/
 
     img Input image.
+
+    sobelKernelSize Canny parameter.
 
     Returns edge image.
     '''
@@ -382,11 +400,11 @@ def otsuCanny(img: np.ndarray) -> np.ndarray:
     otsuThresMax, _ = cv.threshold(img, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
     otsuThresMin = 0.5 * otsuThresMax
 
-    return cv.Canny(img, otsuThresMin, otsuThresMax, None, 3, True)
-
+    return cv.Canny(img, otsuThresMin, otsuThresMax, None, sobelKernelSize, True)
 
 def medianCanny(img: np.ndarray = None,
-                sigma: float = 0.33) -> np.ndarray:
+                sigma: float = 0.33,
+                sobelKernelSize = 3) -> np.ndarray:
     '''
     Automatic Canny threshold detection via statistical distribution.
     https://stackoverflow.com/questions/21324950/how-to-select-the-best-set-of-parameters-in-canny-edge-detection-algorithm-imple
@@ -395,6 +413,8 @@ def medianCanny(img: np.ndarray = None,
     img Input image.
 
     sigma For threshold determination. Default is 0.33 which is typical used in datascience.
+
+    sobelKernelSize Canny parameter.
 
     Returns edge image.
     '''
@@ -413,8 +433,7 @@ def medianCanny(img: np.ndarray = None,
     edgeThresMin = int(max(0, (1.0 - sigma) * v))
     edgeThresMax = int(min(255, (1.0 + sigma) * v))
 
-    return cv.Canny(img, edgeThresMin, edgeThresMax, None, 3, True)
-
+    return cv.Canny(img, edgeThresMin, edgeThresMax, None, sobelKernelSize, True)
 
 def cannyAscendingThreshold(img: np.ndarray = None,
                             threshold1: int = 0,

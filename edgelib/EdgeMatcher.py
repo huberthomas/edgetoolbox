@@ -174,7 +174,6 @@ class EdgeMatcher:
                                                      cannyBlurKernelSize,
                                                      stepRange,
                                                      validEdgesThreshold)
-
                 tmpFrame = self.__frameSet[i]
                 tmpFrame.setBoundaries(mask)
 
@@ -273,8 +272,13 @@ class EdgeMatcher:
         cannyKernelSizes = [(edgeKernelSize, blurKernelSize), (3, 3), (3, 3)]
 
         # preprocess multiscale boundary and distance transform
-        for s in scales:
-            boundaries = ImageProcessing.edgePreservedOtsuCanny(cv.resize(frame.rgb(), (0, 0), fx=s, fy=s, interpolation=cv.INTER_AREA))
+        for k in range(0, len(scales)):
+            s = scales[k]
+            scaledImg = cv.resize(frame.rgb(), (0, 0), fx=s, fy=s, interpolation=cv.INTER_AREA)
+            boundaries = ImageProcessing.edgePreservedOtsuCanny(scaledImg, 3)
+            #boundaries = ImageProcessing.medianCanny(cv.blur(scaledImg, (5, 5)), 0.33, 5)
+            #boundaries = ImageProcessing.otsuCanny(cv.blur(scaledImg, (cannyKernelSizes[k][1], cannyKernelSizes[k][1])), cannyKernelSizes[k][0])
+            #boundaries = ImageProcessing.canny(scaledImg, cannyThresholds[k][0], cannyThresholds[k][1], cannyKernelSizes[k][0], True, cannyKernelSizes[k][1])
             frame.updateMultiscaleBoundaries(s, boundaries)
 
         # fill frame set
@@ -412,7 +416,7 @@ class EdgeMatcher:
         # fig.suptitle('Reprojected To Strong Scaled Edges')
         for key, res in meaningfulEdgesList.items():
             stableProjectedEdgesList.append(res)
-            # fig.add_subplot(2, int(len(meaningfulEdgesList.values())/2.0), len(refinedProjectedEdgesList))
+            # fig.add_subplot(2, int(len(meaningfulEdgesList.values())/2.0), len(stableProjectedEdgesList))
             # scaledRes = res.copy()
             # scaledBest, scaledGood, scaledWorse = cv.split(scaledRes)
             # scaledRes[np.where(scaledBest > 0)] = [0, 255, 0]
