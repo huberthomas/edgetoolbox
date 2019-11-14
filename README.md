@@ -12,6 +12,10 @@ For installation I would recommend using [Conda](https://docs.conda.io/projects/
 
 To install all necessary dependencies please use conda or pip. Conda is recommended because it creates its' own environment where it installs all needed packages independently from other projects.
 
+### Literature
+
+[Hackers Guide to Neural Networks](http://karpathy.github.io/neuralnets/)
+
 ### Conda
 
     conda env create -f environment.yml
