@@ -1,3 +1,5 @@
 __pycache__
 .vscode/.ropeproject
 dependencies/tum/results*
+dependencies/nyudv2/*.mexa64
+dependencies/tum/*.pyc
