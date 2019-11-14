@@ -137,51 +137,51 @@ def main() -> None:
         datasetBase = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets'
 
         subDir = [
-            # 'rgbd_dataset_freiburg1_desk',
-            # 'rgbd_dataset_freiburg1_desk2',
-            # 'rgbd_dataset_freiburg1_plant',
-            # 'rgbd_dataset_freiburg1_room',
-            # 'rgbd_dataset_freiburg1_rpy',
-            # 'rgbd_dataset_freiburg1_xyz',
-            # 'rgbd_dataset_freiburg2_desk',
-            # 'rgbd_dataset_freiburg2_xyz',
-            # 'rgbd_dataset_freiburg3_long_office_household',
+            'rgbd_dataset_freiburg1_desk',
+            'rgbd_dataset_freiburg1_desk2',
+            'rgbd_dataset_freiburg1_plant',
+            'rgbd_dataset_freiburg1_room',
+            'rgbd_dataset_freiburg1_rpy',
+            'rgbd_dataset_freiburg1_xyz',
+            'rgbd_dataset_freiburg2_desk',
+            'rgbd_dataset_freiburg2_xyz',
+            'rgbd_dataset_freiburg3_long_office_household',
 
-            # 'rgbd_dataset_freiburg1_360',
-            # 'rgbd_dataset_freiburg1_floor',
-            # 'rgbd_dataset_freiburg1_teddy',
-            # 'rgbd_dataset_freiburg2_360_hemisphere',
-            # 'rgbd_dataset_freiburg2_coke',
-            # 'rgbd_dataset_freiburg2_desk_with_person',
-            # 'rgbd_dataset_freiburg2_dishes',
-            # 'rgbd_dataset_freiburg2_flowerbouquet',
-            # 'rgbd_dataset_freiburg2_flowerbouquet_brownbackground',
-            # 'rgbd_dataset_freiburg2_large_no_loop',
-            # 'rgbd_dataset_freiburg2_metallic_sphere',
-            # 'rgbd_dataset_freiburg2_metallic_sphere2',
-            # 'rgbd_dataset_freiburg2_pioneer_360',
-            # 'rgbd_dataset_freiburg2_pioneer_slam',
+             'rgbd_dataset_freiburg1_360',
+            'rgbd_dataset_freiburg1_floor',
+            'rgbd_dataset_freiburg1_teddy',
+            'rgbd_dataset_freiburg2_360_hemisphere',
+            'rgbd_dataset_freiburg2_coke',
+            'rgbd_dataset_freiburg2_desk_with_person',
+            'rgbd_dataset_freiburg2_dishes',
+            'rgbd_dataset_freiburg2_flowerbouquet',
+            'rgbd_dataset_freiburg2_flowerbouquet_brownbackground',
+            'rgbd_dataset_freiburg2_large_no_loop',
+            'rgbd_dataset_freiburg2_metallic_sphere',
+            'rgbd_dataset_freiburg2_metallic_sphere2',
+            'rgbd_dataset_freiburg2_pioneer_360',
+            'rgbd_dataset_freiburg2_pioneer_slam',
 
-            # 'rgbd_dataset_freiburg3_cabinet',
-            # 'rgbd_dataset_freiburg3_large_cabinet',
-            # 'rgbd_dataset_freiburg3_nostructure_texture_far',
-            # 'rgbd_dataset_freiburg3_nostructure_texture_near_withloop',
-            # 'rgbd_dataset_freiburg3_sitting_static',
-            # 'rgbd_dataset_freiburg3_structure_notexture_far',
-            # 'rgbd_dataset_freiburg3_structure_notexture_near',
-            # 'rgbd_dataset_freiburg3_structure_texture_far',
-            # 'rgbd_dataset_freiburg3_structure_texture_near',
-            # 'rgbd_dataset_freiburg3_teddy',
-            # 'rgbd_dataset_freiburg3_walking_xyz',
+            'rgbd_dataset_freiburg3_cabinet',
+            'rgbd_dataset_freiburg3_large_cabinet',
+            'rgbd_dataset_freiburg3_nostructure_texture_far',
+            'rgbd_dataset_freiburg3_nostructure_texture_near_withloop',
+            'rgbd_dataset_freiburg3_sitting_static',
+            'rgbd_dataset_freiburg3_structure_notexture_far',
+            'rgbd_dataset_freiburg3_structure_notexture_near',
+            'rgbd_dataset_freiburg3_structure_texture_far',
+            'rgbd_dataset_freiburg3_structure_texture_near',
+            'rgbd_dataset_freiburg3_teddy',
+            'rgbd_dataset_freiburg3_walking_xyz',
 
             # 'icl_living_room_0',
             # 'icl_living_room_1',
-            # 'icl_living_room_2',
-            # 'icl_living_room_3',
+            #'icl_living_room_2',
+            #'icl_living_room_3',
             # 'icl_office_0',
             # 'icl_office_1',
-            #'icl_office_2',
-            #'icl_office_3',
+            # 'icl_office_2',
+            # 'icl_office_3',
             # 'eth3d_cables_1',
             # 'eth3d_cables_2',
             # 'eth3d_einstein_1',
@@ -208,10 +208,10 @@ def main() -> None:
             args.rgbDir = os.path.join(datasetBase, subDir[i], 'rgb')
             args.depthDir = os.path.join(datasetBase, subDir[i], 'depth')
             #args.maskDir = os.path.join(allBase, subDir[i], 'level0/canny')
-            args.camCalibFile = os.path.join(datasetBase, subDir[i], 'camera_calib.yml')
+            args.camCalibFile = os.path.join(datasetBase, subDir[i], 'camera_calib_schenk.yml')
             args.groundTruthFile = os.path.join(datasetBase, subDir[i], 'groundtruth_associated.txt')
-            args.outputDir = os.path.join(allBase, subDir[i], 'level0', 'stableEdgesFo2')
-            args.frameOffset = 2
+            args.outputDir = os.path.join(allBase, subDir[i], 'level0', 'stableEdgesFo3')
+            args.frameOffset = 3
             args.lowerEdgeDistanceBoundary = 3
             args.upperEdgeDistanceBoundary = args.lowerEdgeDistanceBoundary
             args.projectionMode = 3
@@ -267,8 +267,12 @@ def main() -> None:
                 #     continue
 
                 a = data[j]
+                # quick fix for HHA
+                #logging.info('HHA mode!')
+                #a.rgb = gtHandler.getAssocatedDepthFile(a.rgb)
+
                 if not os.path.exists(os.path.join(args.rgbDir, a.rgb)):
-                    logging.info('Skipping %s. File not found.' % (a.rgb))
+                    logging.info('Skipping %s. File not found.' % (os.path.join(args.rgbDir, a.rgb)))
                     continue
 
                 logging.info('Loading frame at timestamp %f (RGB: %s)' % (a.gt.timestamp, a.rgb))
@@ -280,6 +284,7 @@ def main() -> None:
                 depth = cv.imread(os.path.join(args.depthDir, a.depth), cv.IMREAD_UNCHANGED)
                 #mask = cv.imread(os.path.join(args.maskDir, a.rgb), cv.IMREAD_GRAYSCALE)
 
+
                 if args.inpaintDepth == 1:
                     depth = ImageProcessing.reconstructDepthImg(depth, 5, cv.INPAINT_NS)
                 elif args.inpaintDepth == 2:
@@ -289,13 +294,13 @@ def main() -> None:
                 frame.uid = a.rgb  # a.gt.timestamp
 
                 if args.whiteBalance:
+                    # e.g. for the ETH3D dataset
                     rgb = ImageProcessing.whiteBalance(rgb)
                     rgb = cv.cvtColor(rgb, cv.COLOR_BGR2GRAY)
                     # https://docs.opencv.org/master/d5/daf/tutorial_py_histogram_equalization.html
                     clahe = cv.createCLAHE(clipLimit=6.0, tileGridSize=(8,8))
                     rgb = clahe.apply(rgb)
                     rgb = cv.cvtColor(rgb, cv.COLOR_GRAY2BGR)
-
                 frame.setRgb(rgb)
                 frame.setDepth(depth)
                 frame.setT(a.gt.q, a.gt.t)
@@ -333,7 +338,7 @@ def main() -> None:
 
                 # fig.add_subplot(3, 1, 3)
                 # plt.axis('off')
-                # plt.title('Good/Bad Edges')
+                # plt.title('Stable Edges')
                 # # plt.imshow(cv.cvtColor(rgbCpy, cv.COLOR_BGR2RGB))
                 # plt.imshow(rgbCpy)
                 # plt.show()
