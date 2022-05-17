@@ -74,7 +74,7 @@ def invertImages(imgFilePath: str = None,
 
 def main() -> None:
     '''
-    Main function. Parse, check input parameter and process data augmentation.
+    Main function. Parse, check input parameter and invert images.
     '''
     try:
         args = parseArgs()

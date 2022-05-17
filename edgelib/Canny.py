@@ -1,9 +1,8 @@
-import cv2
 import numpy as np
-from scipy import ndimage
 from scipy.ndimage import filters
-from typing import List
-
+from typing import List,Tuple
+import cv2 as cv
+import copy
 
 class Canny:
     '''
@@ -14,7 +13,7 @@ class Canny:
     https://blog.sicara.com/opencv-edge-detection-tutorial-7c3303f10788
     '''
 
-    def __init__(self, sigma: float = 1, kernelSize: int = 5, weakPixel: int = 75, strongPixel: int = 255, lowThreshold: float = 0.05, highThreshold: float = 0.15):
+    def __init__(self, sigma: float = 1, kernelSize: int = 5, weakPixel: int = 25, strongPixel: int = 255, lowThreshold: float = 0.05, highThreshold: float = 0.09):
         '''
         Constructor. Initialize values.
 
@@ -44,6 +43,18 @@ class Canny:
         self.lowThreshold = lowThreshold
         self.highThreshold = highThreshold
 
+    def toString(self) -> None:
+        '''
+        Output current Canny settings.
+        '''
+        print("")
+        print("Weak pixel:", self.weakPixel)
+        print("Strong pixel:", self.strongPixel)
+        print("Sigma: ", self.sigma)
+        print("Kernel size: ", self.kernelSize)
+        print("Low threshold: ", self.lowThreshold)
+        print("High threshold: ", self.highThreshold)
+
     def gaussianKernel(self, kernelSize: int = 5, sigma: float = 1) -> np.ndarray:
         '''
         Gaussian kernel.
@@ -54,13 +65,13 @@ class Canny:
 
         Returns a Gaussian kernel.
         '''
-        kernelSize = int(kernelSize) // 2
+        kernelSize = int(kernelSize // 2)
         x, y = np.mgrid[-kernelSize:(kernelSize + 1), -kernelSize:(kernelSize + 1)]
         normal = 1 / (2.0 * np.pi * sigma**2)
         g = np.exp(-((x**2 + y**2) / (2.0*sigma**2))) * normal
         return g
 
-    def sobelFilters(self, img: np.ndarray = None) -> (np.ndarray, np.ndarray):
+    def sobelFilters(self, img: np.ndarray = None) -> tuple((np.ndarray, np.ndarray)):
         '''
         Filter an image with Sobel in x and y direction and return the gradient and the gradient direction.
 
@@ -179,7 +190,7 @@ class Canny:
 
         return img
 
-    def detect(self, img: np.ndarray = None):
+    def detect(self, img: np.ndarray = None) -> np.ndarray:
         '''
         Detect edges.
 
@@ -187,8 +198,35 @@ class Canny:
 
         Returns detected edge image.
         '''
-        self.imgSmoothed = filters.convolve(img, self.gaussianKernel(self.kernelSize, self.sigma))
-        self.gradientMat, self.thetaMat = self.sobelFilters(self.imgSmoothed)
-        self.nonMaxImg = self.nonMaxSuppression(self.gradientMat, self.thetaMat)
-        self.thresholdImg = self.threshold(self.nonMaxImg)
-        return self.hysteresis(self.thresholdImg)
+        self.toString()
+        img = img.astype(np.double)
+        self.imgSmoothed = filters.convolve(img, self.gaussianKernel(self.kernelSize, self.sigma)) #cv.blur(img, (self.kernelSize, self.kernelSize))
+        self.gradientMat, self.thetaMat = self.sobelFilters(self.imgSmoothed.astype(np.double))
+        self.nonMaxImg = self.nonMaxSuppression(self.gradientMat.astype(np.double), self.thetaMat.astype(np.double))
+        self.thresholdImg = self.threshold(self.nonMaxImg.astype(np.double))
+        edge = self.hysteresis(self.thresholdImg.astype(np.double))
+
+        # self.thetaMat = self.thetaMat * 180. / np.pi
+        # self.thetaMat[self.thetaMat < 0] += 180
+        #self.thetaMat = self.thetaMat.astype(np.double)
+        #minVal = 0
+        #maxVal = 0
+        #min_val,max_val,min_indx,max_indx=cv.minMaxLoc(self.thetaMat)
+        #self.thetaMat = (self.thetaMat / max_val)*255
+
+        # print("img ",cv.minMaxLoc(img))
+        # print("imgSmoothed" ,cv.minMaxLoc(self.imgSmoothed))
+        # print("gradientMat ",cv.minMaxLoc(self.gradientMat.astype(np.double)))
+        # print("thetaMat ",cv.minMaxLoc(self.thetaMat.astype(np.double)))
+        # print("thresholdImg ",cv.minMaxLoc(self.thresholdImg))
+        # print("edge ",cv.minMaxLoc(self.hysteresis(self.thresholdImg)))
+
+        # x=264
+        # y=309
+        # print("")
+        # print("imgSmoothed: ", self.imgSmoothed[x,y])
+        # print("gradientMat: ", self.gradientMat[x,y])
+        # print("thetaMat: ", self.thetaMat[x,y])
+        # print("nonMaxImg: ", self.nonMaxImg[x,y])
+        # print("thresholdImg: ", self.thresholdImg[x,y])
+        return edge.astype(np.double)

@@ -57,7 +57,7 @@ def parseArgs() -> any:
     return parser.parse_args()
 
 
-def processAndSaveReconstructedDepthImg(imgFilePath: str = None,
+def processAndSavePrecisionRecallVisualization(imgFilePath: str = None,
                                         gtFilePath: str = None,
                                         outFilePath: str = None) -> None:
     '''
@@ -108,7 +108,7 @@ def processAndSaveReconstructedDepthImg(imgFilePath: str = None,
 
 def main() -> None:
     '''
-    Main function. Parse, check input parameter and process data augmentation.
+    Main function. Parse, check input parameter and process precision/recall visualization.
 
     python precisionRecallViewer.py -i '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/bsr_bsds500/BSR/BSDS500/data/images/test_png/bsds500mixaug_edge_preserved_otsu_aug-nms' -gt '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/bsr_bsds500/BSR/BSDS500/data/groundTruth/test' -o '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/bsr_bsds500/BSR/BSDS500/data/images/test_png/deleteme' -t 1
     python precisionRecallViewer.py -i '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/bsr_bsds500/BSR/BSDS500/data/groundTruth/test' -gt '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/bsr_bsds500/BSR/BSDS500/data/groundTruth/test' -o '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/bsr_bsds500/BSR/BSDS500/data/images/test_png/deleteme' -t 1
@@ -138,7 +138,7 @@ def main() -> None:
         pool = mp.Pool(processes=args.threads)
 
         startTime = time.time()
-        pool.starmap(processAndSaveReconstructedDepthImg, param)
+        pool.starmap(processAndSavePrecisionRecallVisualization, param)
         elapsedTime = time.time() - startTime
 
         pool.terminate()

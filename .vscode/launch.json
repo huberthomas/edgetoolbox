@@ -13,7 +13,7 @@
                 "-r", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/rgb", 
                 "-d", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/depth_inpaint_nans_m0", 
                 "-m", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/all/rgbd_dataset_freiburg2_xyz/level0/canny", 
-                "-c", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/camera_calib_schenk.yml", 
+                "-c", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/camera_calib.yml", 
                 "-o", "/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/train/rgbd_dataset_freiburg2_xyz/em_output", 
                 "-p", "3", 
                 "-f", "2", 

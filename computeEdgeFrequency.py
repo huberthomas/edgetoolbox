@@ -43,7 +43,7 @@ def parseArgs() -> any:
 
 def main() -> None:
     '''
-    Main function. Parse, check input parameter and process data augmentation.
+    Main function. Parse, check input parameter and compute edge frequencies.
     '''
     try:
         args = parseArgs()

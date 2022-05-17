@@ -60,7 +60,7 @@ def displayProgress(val: float = None):
 
 def main() -> None:
     '''
-    Main function. Parse, check input parameter and process data augmentation.
+    Main function. Parse, check input parameter and associate TUM ground truth with existing image files.
     '''
     try:
         datasetBase = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets'

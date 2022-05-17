@@ -118,7 +118,7 @@ def processAndSaveCanny(imgFilePath: str = None,
 
 def main() -> None:
     '''
-    Main function. Parse, check input parameter and process data augmentation.
+    Main function. Parse, check input parameter and process Canny edge detector with concatenation of ascending thresholds.
     '''
     try:
         args = parseArgs()

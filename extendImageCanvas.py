@@ -98,7 +98,7 @@ def processImage(imgFilePath: str = None,
 
 def main() -> None:
     '''
-    Main function. Parse, check input parameter and process data augmentation.
+    Main function. Parse, check input parameter and extend image canvas.
     '''
     try:
         args = parseArgs()

@@ -95,7 +95,7 @@ def processAndSaveReconstructedDepthImg(imgFilePath: str = None,
 
 def main() -> None:
     '''
-    Main function. Parse, check input parameter and process data augmentation.
+    Main function. Parse, check input parameter and reconstruct porous depth images.
     '''
     try:
         args = parseArgs()

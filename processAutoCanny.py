@@ -59,16 +59,6 @@ def processAndSaveCanny(imgFilePath: str = None,
     imgFilePath Input image file path.
 
     outFilePath Output image file path.
-
-    threshold1 First threshold for the hysteresis procedure.
-
-    threshold2 Second threshold for the hysteresis procedure.
-
-    kernelSize Kernel size for the sobel operator.
-
-    highAccuracy If true, L2 gradient will be used for more accuracy.
-
-    blurKernelSize Kernel size for the Sobel operator.
     '''
     try:
         img = cv.imread(imgFilePath)
@@ -82,7 +72,7 @@ def processAndSaveCanny(imgFilePath: str = None,
 
 def main() -> None:
     '''
-    Main function. Parse, check input parameter and process data augmentation.
+    Main function. Parse, check input parameter and process Canny with Otsu's method for threshold determination.
     '''
     try:
         args = parseArgs()
