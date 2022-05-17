@@ -1,0 +1,11 @@
+%YAML:1.0
+---
+cameraMatrix: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: f
+   data: [ 520.908620, 0., 325.141442, 0., 521.007327, 249.701764, 0., 0.,
+       1. ]
+distortionCoefficients: [ 0., 0., 0., 0., 0. ]
+depthScaleFactor: 5200.0
+
