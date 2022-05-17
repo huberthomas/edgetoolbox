@@ -1,4 +1,4 @@
-# Edge Toolbox
+# Edge Detection Toolbox
 This toolbox was created in the course of my master thesis: Machine Learned Edges for Edge-based Visual Odometry
 
 ## License
