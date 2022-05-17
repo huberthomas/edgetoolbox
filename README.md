@@ -1,5 +1,5 @@
-# edgetoolbox
-This toolbox was created during my master thesis.
+# Edge Toolbox
+This toolbox was created in the course of my master thesis: Machine Learned Edges for Edge-based Visual Odometry
 
 ## License
 
@@ -23,6 +23,8 @@ To install all necessary dependencies please use conda or pip. Conda is recommen
 ### Python pip
 
     pip install -r requirements.txt --user
+
+### dependencies
 
 ## Datasets
 
