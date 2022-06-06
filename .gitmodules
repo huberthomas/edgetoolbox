@@ -1,3 +1,9 @@
 [submodule "dependencies/sophus"]
 	path = dependencies/sophus
 	url = git@github.com:strasdat/Sophus.git
+[submodule "dependencies/edgeval"]
+	path = dependencies/edgeval
+	url = https://github.com/zeakey/edgeval.git
+[submodule "dependencies/nyudv2_data_label_extractor"]
+	path = dependencies/nyudv2_data_label_extractor
+	url = git@github.com:howard-mahe/nyudv2_data_label_extractor.git
