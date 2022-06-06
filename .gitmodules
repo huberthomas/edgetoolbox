@@ -13,3 +13,24 @@
 [submodule "dependencies/toolbox_nyu_depth_v2"]
 	path = dependencies/toolbox_nyu_depth_v2
 	url = git@github.com:jjhartmann/Toolbox-NYU-Depth-V2.git
+[submodule "ed/se"]
+	path = ed/se
+	url = git@github.com:pdollar/edges.git
+[submodule "ed/rcf"]
+	path = ed/rcf
+	url = git@github.com:yun-liu/RCF.git
+[submodule "ed/dc"]
+	path = ed/dc
+	url = git@github.com:shenwei1231/DeepContour.git
+[submodule "ed/bdcn"]
+	path = ed/bdcn
+	url = git@github.com:pkuCactus/BDCN.git
+[submodule "ed/sn"]
+	path = ed/sn
+	url = git@github.com:MichaelRamamonjisoa/SharpNet.git
+[submodule "ed/hed"]
+	path = ed/hed
+	url = git@github.com:zeakey/hed.git
+[submodule "dependencies/depth2hha"]
+	path = dependencies/depth2hha
+	url = git@github.com:charlesCXK/Depth2HHA.git
