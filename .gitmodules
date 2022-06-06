@@ -3,7 +3,13 @@
 	url = git@github.com:strasdat/Sophus.git
 [submodule "dependencies/edgeval"]
 	path = dependencies/edgeval
-	url = https://github.com/zeakey/edgeval.git
+	url = git@github.com:zeakey/edgeval.git
 [submodule "dependencies/nyudv2_data_label_extractor"]
 	path = dependencies/nyudv2_data_label_extractor
 	url = git@github.com:howard-mahe/nyudv2_data_label_extractor.git
+[submodule "vo/REVO"]
+	path = vo/REVO
+	url = git@github.com:fabianschenk/REVO.git
+[submodule "dependencies/toolbox_nyu_depth_v2"]
+	path = dependencies/toolbox_nyu_depth_v2
+	url = git@github.com:jjhartmann/Toolbox-NYU-Depth-V2.git
