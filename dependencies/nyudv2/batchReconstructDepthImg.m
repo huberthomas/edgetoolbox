@@ -1,6 +1,5 @@
 clear all;
 clc;
-addpath('/home/tom/University/repositories/projects_archive/matlabHelpers')
 inputDir = '/run/user/1000/gvfs/smb-share:server=192.168.0.253,share=data/Master/datasets/'
 subDir = {
     'rgbd_dataset_freiburg1_360',...

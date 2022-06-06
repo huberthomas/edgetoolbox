@@ -1,4 +1,3 @@
-% Z:\Master\linux\University\repositories\projects_archive\nyudv2_data_label_extractor\data\label40
 clear all
 close all
 inputDir='..\dependencies\nyudv2_data_label_extractor\data\label40';

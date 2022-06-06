@@ -1,5 +1,5 @@
 close all; clear all;
-% addpath('/home/tom/University/repositories/projects_archive/edgeval/')
+
 addpath('..\dependencies\edgeval\')
 addpath('..\dependencies\edgeval\mex\')
 addpath('..\dependencies\edgeval\utils\')
